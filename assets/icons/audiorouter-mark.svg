@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">AudioRouter 声桥图标</title>
+  <desc id="desc">两条双向音频波形穿过中心连接核心，代表设备之间的实时音频传输。</desc>
+  <defs>
+    <linearGradient id="surface" x1="64" y1="24" x2="448" y2="488" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1D514A"/>
+      <stop offset="1" stop-color="#102B2A"/>
+    </linearGradient>
+    <linearGradient id="mint" x1="94" y1="151" x2="419" y2="361" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#B6F4D8"/>
+      <stop offset="1" stop-color="#61D6B2"/>
+    </linearGradient>
+    <linearGradient id="amber" x1="168" y1="191" x2="350" y2="324" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFD98A"/>
+      <stop offset="1" stop-color="#ECA63B"/>
+    </linearGradient>
+  </defs>
+  <rect x="20" y="20" width="472" height="472" rx="132" fill="url(#surface)"/>
+  <path d="M137 105C177 79 216 66 256 66s79 13 119 39" fill="none" stroke="#D4FFF0" stroke-opacity=".08" stroke-width="3"/>
+  <path d="M375 407c-40 26-79 39-119 39s-79-13-119-39" fill="none" stroke="#D4FFF0" stroke-opacity=".08" stroke-width="3"/>
+  <path d="M102 198C147 137 211 141 256 219c45 78 109 82 154 21" fill="none" stroke="url(#mint)" stroke-linecap="round" stroke-width="28"/>
+  <path d="M410 314C365 375 301 371 256 293c-45-78-109-82-154-21" fill="none" stroke="url(#amber)" stroke-linecap="round" stroke-width="28"/>
+  <circle cx="256" cy="256" r="57" fill="#173E39" stroke="#D8FFEC" stroke-opacity=".92" stroke-width="7"/>
+  <path d="M236 247v18M256 235v42M276 247v18" fill="none" stroke="#FFD98A" stroke-linecap="round" stroke-width="9"/>
+</svg>

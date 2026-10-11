@@ -1,0 +1,1514 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#202725">
+  <title>AudioRouter · PC 交互预览</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --canvas: #202725;
+      --surface: #182622;
+      --raised: #20332e;
+      --line: #3b554d;
+      --text: #eef6f1;
+      --muted: #9bb4aa;
+      --mint: #8fddc3;
+      --amber: #f2ae70;
+      --shadow: rgba(0, 0, 0, .25);
+      --switch-off: #20332e;
+      --switch-thumb: #b1c5bc;
+      --switch-on: rgba(143, 221, 195, .24);
+      --danger: #f08e83;
+      --page-width: 1360px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(ellipse at 13% 0%, rgba(143, 221, 195, .09), transparent 34rem),
+        radial-gradient(ellipse at 100% 18%, rgba(242, 174, 112, .055), transparent 28rem),
+        var(--canvas);
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      letter-spacing: 0;
+    }
+
+    button, input { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible {
+      outline: 2px solid var(--amber);
+      outline-offset: 3px;
+    }
+
+    .page-shell {
+      width: min(100% - 56px, var(--page-width));
+      margin: 0 auto;
+      padding: 26px 0 34px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      min-height: 50px;
+      margin-bottom: 42px;
+    }
+
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid rgba(143, 221, 195, .38);
+      border-radius: 12px;
+      color: var(--mint);
+      background: rgba(143, 221, 195, .1);
+    }
+
+    .brand-mark svg { width: 22px; height: 22px; }
+    .brand-copy { min-width: 0; }
+    .brand-copy strong { display: block; font-size: 15px; letter-spacing: .015em; }
+    .brand-copy span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+
+    .topbar-spacer { flex: 1; }
+
+    .demo-badge,
+    .status-chip,
+    .count-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .demo-badge {
+      min-height: 32px;
+      padding: 0 12px;
+      color: var(--amber);
+      background: rgba(242, 174, 112, .08);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .demo-dot, .online-dot, .flow-dot {
+      width: 7px;
+      height: 7px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--amber);
+    }
+
+    h1, h2, h3, p { margin-top: 0; }
+    .status-chip {
+      min-height: 36px;
+      padding: 0 13px;
+      color: var(--muted);
+      background: rgba(24, 38, 34, .76);
+      font-size: 11px;
+    }
+    .status-chip strong { color: var(--text); font-size: 12px; }
+    .status-chip .online-dot { background: #61756d; }
+    .status-chip.is-online .online-dot { background: var(--mint); box-shadow: 0 0 0 4px rgba(143, 221, 195, .11); }
+
+    .transport-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: start;
+      gap: 16px;
+    }
+
+    .transport-panel {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(24, 38, 34, .92);
+      box-shadow: 0 20px 45px var(--shadow);
+      transition: border-color .24s ease, box-shadow .24s ease;
+    }
+    .transport-panel[data-transport="lan"].is-open { border-color: rgba(242, 174, 112, .52); }
+    .transport-panel[data-transport="bluetooth"].is-open { border-color: rgba(143, 221, 195, .48); }
+
+    .transport-head {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      min-height: 84px;
+      padding: 17px 19px;
+    }
+
+    .transport-symbol {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: var(--muted);
+      background: var(--raised);
+      transition: color .2s ease, background .2s ease, border-color .2s ease;
+    }
+    .transport-symbol svg { width: 21px; height: 21px; }
+    [data-transport="lan"].is-open .transport-symbol { border-color: rgba(242, 174, 112, .3); color: var(--amber); background: rgba(242, 174, 112, .09); }
+    [data-transport="bluetooth"].is-open .transport-symbol { border-color: rgba(143, 221, 195, .28); color: var(--mint); background: rgba(143, 221, 195, .08); }
+
+    .transport-title { min-width: 0; flex: 1; }
+    .transport-title h2 { margin: 0 0 5px; font-size: 16px; line-height: 1.2; }
+    .transport-title p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+
+    .transport-switch-wrap { display: flex; align-items: center; gap: 9px; }
+    .switch-label { color: var(--muted); font-size: 10px; }
+    .transport-panel.is-open .switch-label { color: var(--text); }
+
+    .switch {
+      position: relative;
+      width: 46px;
+      height: 27px;
+      flex: 0 0 auto;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: var(--switch-off);
+      box-shadow: inset 0 0 0 1.5px var(--line);
+      cursor: pointer;
+      transition: background .2s ease, box-shadow .2s ease;
+    }
+    .switch::after {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 19px;
+      height: 19px;
+      border-radius: 50%;
+      background: var(--switch-thumb);
+      content: "";
+      transition: transform .22s cubic-bezier(.2, .8, .2, 1), background .2s ease;
+    }
+    .switch[aria-checked="true"] { background: var(--switch-on); box-shadow: inset 0 0 0 1px var(--mint); }
+    .switch[aria-checked="true"]::after { background: var(--mint); transform: translateX(19px); }
+    .switch:hover { filter: brightness(1.12); }
+
+    .panel-expansion {
+      display: grid;
+      grid-template-rows: 0fr;
+      border-top: 1px solid transparent;
+      transition: grid-template-rows .32s cubic-bezier(.2, .75, .25, 1), border-color .22s ease;
+    }
+    .is-open .panel-expansion { grid-template-rows: 1fr; border-color: rgba(59, 85, 77, .7); }
+    .panel-clip { min-height: 0; overflow: hidden; }
+    .panel-body { padding: 15px 16px 16px; opacity: 0; transform: translateY(-5px); transition: opacity .2s ease .06s, transform .24s ease .04s; }
+    .is-open .panel-body { opacity: 1; transform: translateY(0); }
+
+    .device-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+    .device-toolbar-copy { min-width: 0; flex: 1; }
+    .device-toolbar-copy strong { display: block; margin-bottom: 4px; font-size: 11px; }
+    .device-toolbar-copy span { display: block; color: var(--muted); font-size: 10px; }
+    .count-chip { min-height: 23px; padding: 0 8px; color: var(--muted); background: rgba(32, 51, 46, .7); font-size: 9px; }
+
+    .refresh-button {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: var(--muted);
+      background: var(--raised);
+      cursor: pointer;
+      transition: color .18s ease, border-color .18s ease, background .18s ease;
+    }
+    .refresh-button:hover { border-color: var(--mint); color: var(--mint); background: rgba(143, 221, 195, .08); }
+    [data-transport="lan"] .refresh-button:hover { border-color: var(--amber); color: var(--amber); background: rgba(242, 174, 112, .08); }
+    .refresh-glyph { display: grid; place-items: center; width: 19px; height: 19px; }
+    .refresh-glyph svg { display: block; width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.7; }
+    .refresh-button.is-refreshing .refresh-glyph svg { transform-origin: 50% 50%; animation: refresh-spin .72s linear infinite; }
+    .refresh-button:disabled { cursor: pointer; opacity: .82; }
+
+    .device-list { display: grid; gap: 9px; }
+    .device-card {
+      min-width: 0;
+      padding: 13px 13px 11px;
+      border: 1px solid rgba(59, 85, 77, .8);
+      border-radius: 10px;
+      background: rgba(14, 23, 21, .44);
+      transition: border-color .2s ease, background .2s ease, transform .2s ease;
+      animation: card-enter .22s ease both;
+    }
+    .device-card [hidden] { display: none !important; }
+    .device-card.is-connected { border-color: rgba(143, 221, 195, .42); background: linear-gradient(145deg, rgba(143, 221, 195, .075), rgba(14, 23, 21, .45) 55%); }
+    [data-transport="lan"] .device-card.is-connected { border-color: rgba(242, 174, 112, .42); background: linear-gradient(145deg, rgba(242, 174, 112, .07), rgba(14, 23, 21, .45) 55%); }
+
+    .device-topline { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .device-avatar {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      flex: 0 0 auto;
+      border: 1px solid rgba(155, 180, 170, .13);
+      border-radius: 10px;
+      color: var(--muted);
+      background: var(--raised);
+    }
+    .device-avatar svg { width: 17px; height: 17px; }
+    .device-name-block { min-width: 0; flex: 1; }
+    .device-name { overflow: hidden; margin: 0 0 4px; font-size: 12px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+    .device-detail { overflow: hidden; margin: 0; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .device-status { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; color: var(--muted); font-size: 9px; white-space: nowrap; }
+    .device-status .online-dot { width: 6px; height: 6px; background: #61756d; }
+    .is-connected .device-status { color: var(--mint); }
+    .is-connected .device-status .online-dot { background: var(--mint); }
+    [data-transport="lan"] .is-connected .device-status { color: var(--amber); }
+    [data-transport="lan"] .is-connected .device-status .online-dot { background: var(--amber); }
+
+    .device-actions { display: flex; align-items: center; gap: 7px; margin-left: 5px; }
+    .connection-time { margin-left: auto; color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .action-button {
+      min-width: 64px;
+      min-height: 29px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--mint);
+      background: var(--raised);
+      cursor: pointer;
+      font-size: 10px;
+      font-weight: 650;
+      transition: border-color .18s ease, color .18s ease, background .18s ease, transform .18s ease;
+    }
+    .action-button:hover { border-color: var(--mint); background: rgba(143, 221, 195, .12); }
+    .action-button:active { transform: scale(.97); }
+    .action-button.is-disconnect { min-width: 57px; color: var(--danger); background: rgba(240, 142, 131, .055); }
+    .action-button.is-disconnect:hover { border-color: rgba(240, 142, 131, .58); background: rgba(240, 142, 131, .12); }
+    .action-button:disabled { color: var(--muted); cursor: wait; opacity: .7; }
+
+    .device-controls { display: grid; gap: 10px; margin-top: 12px; padding-top: 11px; border-top: 1px solid rgba(59, 85, 77, .55); }
+    .control-row { display: grid; grid-template-columns: minmax(150px, .95fr) minmax(100px, 1.15fr) 38px; align-items: center; gap: 12px; min-height: 28px; }
+    .control-heading { display: flex; align-items: center; gap: 9px; min-width: 0; }
+    .control-copy { min-width: 0; }
+    .control-copy strong { display: block; overflow: hidden; margin-bottom: 3px; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+    .control-copy span { display: block; overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+    .mini-switch {
+      position: relative;
+      width: 34px;
+      height: 20px;
+      flex: 0 0 auto;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      background: var(--switch-off);
+      box-shadow: inset 0 0 0 1px var(--line);
+      cursor: pointer;
+      transition: background .18s ease, box-shadow .18s ease;
+    }
+    .mini-switch::after { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--switch-thumb); content: ""; transition: transform .18s ease, background .18s ease; }
+    .mini-switch[aria-checked="true"] { background: var(--switch-on); box-shadow: inset 0 0 0 1px var(--mint); }
+    .mini-switch[aria-checked="true"]::after { transform: translateX(14px); background: var(--mint); }
+    .mini-switch:hover { filter: brightness(1.12); }
+
+    input[type="range"] { width: 100%; height: 18px; margin: 0; accent-color: var(--mint); cursor: pointer; }
+    input[type="range"]:disabled { cursor: default; opacity: .35; }
+    .volume-value { color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; text-align: right; }
+
+    .empty-state {
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+      min-height: 136px;
+      padding: 24px;
+      border: 1px dashed rgba(59, 85, 77, .8);
+      border-radius: 10px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .empty-state svg { width: 25px; height: 25px; margin-bottom: 3px; color: #769087; }
+    .empty-state strong { color: var(--text); font-size: 11px; }
+    .empty-state span { font-size: 10px; line-height: 1.5; }
+
+    .transport-off {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 0 19px 17px 74px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+    .transport-off .flow-dot { width: 6px; height: 6px; background: #61756d; }
+    .is-open .transport-off { display: none; }
+
+    .footnote { margin: 12px 2px 0; color: rgba(155, 180, 170, .72); font-size: 9px; line-height: 1.5; }
+
+    @keyframes refresh-spin { to { transform: rotate(-360deg); } }
+    @keyframes card-enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    @media (max-width: 900px) {
+      .page-shell { width: min(100% - 36px, var(--page-width)); padding-top: 20px; }
+      .topbar { margin-bottom: 34px; }
+      .transport-grid { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 580px) {
+      .page-shell { width: min(100% - 24px, var(--page-width)); padding-top: 13px; }
+      .topbar { flex-wrap: wrap; margin-bottom: 27px; }
+      .topbar-spacer { display: none; }
+      .demo-badge { margin-left: auto; }
+      #capture-summary { order: 3; flex-basis: 100%; justify-content: center; }
+      .demo-badge { min-height: 29px; padding: 0 9px; font-size: 9px; }
+      .transport-grid { gap: 12px; }
+      .transport-head { min-height: 76px; gap: 10px; padding: 14px 12px; }
+      .transport-symbol { width: 37px; height: 37px; }
+      .transport-title h2 { font-size: 14px; }
+      .transport-title p { max-width: 220px; font-size: 9px; }
+      .transport-switch-wrap { gap: 6px; }
+      .switch-label { display: none; }
+      .panel-body { padding: 13px 10px 12px; }
+      .device-toolbar { gap: 6px; }
+      .count-chip { padding: 0 6px; font-size: 8px; }
+      .device-card { padding: 11px 9px 10px; }
+      .device-topline { flex-wrap: wrap; gap: 7px; }
+      .device-avatar { width: 31px; height: 31px; }
+      .device-name-block { flex: 1 1 calc(100% - 90px); }
+      .device-status { margin-left: 41px; }
+      .device-actions { margin-left: auto; }
+      .connection-time { margin-left: auto; }
+      .control-row { grid-template-columns: minmax(124px, 1fr) minmax(65px, .8fr) 32px; gap: 7px; }
+      .control-copy span { font-size: 8px; }
+      .control-heading { gap: 6px; }
+      .mini-switch { width: 31px; height: 19px; }
+      .mini-switch::after { width: 13px; height: 13px; }
+      .mini-switch[aria-checked="true"]::after { transform: translateX(12px); }
+      .transport-off { padding-left: 59px; }
+    }
+
+
+    [hidden] { display: none !important; }
+    ::selection { color: var(--canvas); background: var(--mint); }
+    body { scrollbar-color: var(--line) var(--canvas); }
+    input { caret-color: var(--mint); }
+    .topbar { display: grid; grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr); gap: 14px; }
+    .brand-group, .header-tools { display: flex; align-items: center; gap: 13px; }
+    .header-tools { justify-self: end; gap: 10px; }
+    .settings-button, .back-button {
+      display: grid; place-items: center; width: 40px; height: 40px; padding: 0;
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--muted);
+      cursor: pointer; transition: background .18s ease, color .18s ease;
+    }
+    .settings-button svg, .back-button svg, .setting-chevron svg {
+      width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+    }
+    .settings-button:hover, .back-button:hover { background: var(--raised); color: var(--mint); }
+    .settings-button[aria-expanded="true"] { color: var(--mint); border-color: var(--mint); }
+    .capture-control { gap: 12px; min-height: 46px; padding: 7px 11px; border-radius: 12px; }
+    .capture-copy { display: grid; gap: 4px; font-size: 11px; }
+    .capture-copy strong { font-size: 10px; font-weight: 500; color: var(--muted); }
+    .capture-control.is-online .capture-copy strong { color: var(--mint); }
+    .view-enter { animation: view-forward .26s cubic-bezier(.2, .8, .2, 1) both; }
+    .view-back { animation: view-back .26s cubic-bezier(.2, .8, .2, 1) both; }
+    .settings-header { display: flex; align-items: center; gap: 13px; margin-bottom: 18px; }
+    .settings-header h2 { margin: 0; font-size: 22px; line-height: 1.2; }
+    .settings-category-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .settings-category {
+      display: flex; align-items: center; gap: 14px; min-height: 85px; width: 100%; padding: 18px;
+      border: 1px solid var(--line); border-radius: 12px; background: var(--surface); text-align: left; cursor: pointer;
+      transition: background .18s ease, border-color .18s ease;
+    }
+    .settings-category:hover { border-color: var(--mint); background: var(--raised); }
+    .settings-category-copy { display: grid; gap: 6px; flex: 1; min-width: 0; }
+    .settings-category-copy strong { font-size: 15px; }
+    .settings-category-copy small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .category-icon { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 9px; color: var(--mint); background: var(--raised); font-size: 17px; }
+    .setting-chevron { color: var(--muted); }
+    .settings-category.is-locked { opacity: .45; }
+    .settings-category.is-locked:hover { border-color: var(--line); background: var(--surface); }
+    .settings-detail-panel.is-locked { opacity: .45; }
+    .settings-detail-panel { max-width: 920px; margin: 0 auto; }
+    .settings-card { position: relative; padding: 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .settings-card:has(.setting-dropdown.is-open) { z-index: 10; }
+    .settings-card + .settings-card { margin-top: 16px; }
+    .settings-card h2 { margin: 0 0 15px; font-size: 17px; }
+    .about-heading { display: grid; justify-items: center; gap: 11px; margin-bottom: 20px; text-align: center; }
+    .about-icon { width: 88px; height: 88px; flex: 0 0 auto; border-radius: 22px; }
+    .about-heading h2 { margin: 0 0 5px; font-size: 22px; }
+    .about-version, .about-description { color: var(--muted); font-size: 12px; line-height: 1.7; }
+    .about-description { margin: 0 0 20px; }
+    .about-details { margin: 0; }
+    .about-details > div { padding: 14px 0; border-top: 1px solid var(--line); }
+    .about-details dt { margin-bottom: 6px; font-size: 13px; font-weight: 700; }
+    .about-details dd { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+    .about-path { display: block; margin-top: 6px; }
+    .about-credits { max-width: 760px; margin: 16px auto 0; color: var(--muted); font-size: 10px; line-height: 1.7; text-align: center; }
+    .theme-list, .quality-mode-list, .quality-protocol-list { display: grid; gap: 9px; }
+    .theme-choice, .quality-mode-choice, .quality-protocol, .quality-option {
+      display: flex; align-items: center; gap: 12px; min-height: 55px; width: 100%; padding: 12px 14px;
+      border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: transparent; cursor: pointer; text-align: left;
+      transition: background .18s ease, border-color .18s ease;
+    }
+    .theme-choice:hover, .quality-mode-choice:hover, .quality-protocol:hover, .quality-option:hover { background: var(--raised); }
+    .theme-choice[aria-pressed="true"], .quality-mode-choice[aria-pressed="true"], .quality-protocol[aria-pressed="true"],
+    .quality-option[aria-pressed="true"], .buffer-custom.is-active { border-color: var(--mint); background: var(--switch-on); }
+    .theme-dot { color: var(--mint); }
+    .setting-row { display: flex; align-items: center; gap: 18px; min-height: 40px; }
+    .setting-copy { display: grid; flex: 1; gap: 5px; min-width: 0; }
+    .setting-copy strong, .quality-panel-heading > strong, .quality-rate-heading > strong { font-size: 13px; }
+    .setting-copy small, .quality-panel-heading > small, .quality-rate-heading > small { display: block; color: var(--muted); font-size: 11px; line-height: 1.65; }
+    .compact-setting-card { padding: 15px 18px; }
+    .auto-connect-options { display: grid; gap: 10px; max-height: 0; overflow: hidden; opacity: 0; transform: translateY(-5px); transition: max-height .28s ease, opacity .2s ease, transform .24s ease, margin-top .28s ease; }
+    .auto-connect-options.is-open { max-height: 150px; margin-top: 14px; overflow: visible; opacity: 1; transform: translateY(0); }
+    .auto-connect-option-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .auto-connect-option-row strong { display: block; font-size: 12px; }
+    .auto-connect-option-row small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .setting-dropdown { position: relative; z-index: 2; flex: 0 0 auto; width: 148px; }
+    .setting-dropdown.is-open { z-index: 20; }
+    .setting-select { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 36px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--text); background: var(--surface); font: inherit; font-size: 12px; text-align: left; cursor: pointer; transition: border-color .18s ease, background .18s ease; }
+    .setting-select:hover, .setting-select[aria-expanded="true"] { border-color: var(--mint); background: var(--raised); }
+    .setting-select-chevron { width: 15px; height: 15px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .18s ease; }
+    .setting-select[aria-expanded="true"] .setting-select-chevron { transform: rotate(180deg); }
+    .setting-menu { position: absolute; top: calc(100% + 7px); right: 0; left: 0; display: grid; gap: 3px; padding: 5px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); box-shadow: 0 12px 28px var(--shadow); opacity: 0; visibility: hidden; pointer-events: none; transform: translateY(-4px) scale(.98); transform-origin: top center; transition: opacity .16s ease, transform .2s cubic-bezier(.2, .8, .2, 1), visibility 0s linear .2s; }
+    .setting-dropdown.is-open .setting-menu { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0) scale(1); transition-delay: 0s; }
+    .setting-option { display: flex; align-items: center; width: 100%; min-height: 34px; padding: 7px 9px; border: 0; border-radius: 6px; color: var(--text); background: transparent; font: inherit; font-size: 12px; text-align: left; cursor: pointer; transition: background .16s ease, color .16s ease; }
+    .setting-option:hover, .setting-option:focus-visible { background: var(--raised); }
+    .setting-option[aria-selected="true"] { color: var(--mint); background: var(--switch-on); }
+    .setting-option[aria-selected="true"]::after { margin-left: auto; content: "✓"; }
+    .quality-panel-heading, .quality-rate-heading { display: grid; gap: 6px; margin-bottom: 14px; }
+    .quality-panel + .quality-panel { margin-top: 25px; padding-top: 22px; border-top: 1px solid var(--line); }
+    .quality-check { margin-left: auto; color: var(--mint); opacity: 0; flex: 0 0 16px; }
+    [aria-pressed="true"] > .quality-check { opacity: 1; }
+    .setting-state { color: var(--muted); font-size: 11px; white-space: nowrap; }
+    .quality-rate-panel { display: none; margin-top: 18px; }
+    .quality-rate-panel.is-open { display: block; animation: view-forward .2s ease both; }
+    .quality-option-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+    .quality-option-grid.is-single, .buffer-option-grid { grid-template-columns: 1fr; }
+    .quality-option > span { display: grid; gap: 5px; }
+    .quality-option strong { font-size: 13px; }
+    .quality-option small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .quality-option[aria-pressed="true"]::after { content: "✓"; color: var(--mint); margin-left: auto; }
+    .buffer-custom { display: flex; align-items: center; gap: 18px; margin-top: 9px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 9px; cursor: pointer; }
+    .buffer-custom-select { display: flex; flex: 1; padding: 0; border: 0; color: var(--text); background: none; text-align: left; cursor: pointer; }
+    .buffer-custom-select > span { display: grid; gap: 5px; }
+    .buffer-custom-select strong { font-size: 13px; }
+    .buffer-custom-select small { font-size: 11px; color: var(--muted); }
+    .buffer-custom-select[aria-pressed="true"]::after { content: "✓"; margin: auto 12px; color: var(--mint); }
+    .buffer-custom-row { display: flex; align-items: center; gap: 8px; }
+    .buffer-custom-row input { width: 104px; min-height: 36px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; color: var(--text); background: var(--canvas); }
+    .buffer-custom-row input[aria-invalid="true"] { border-color: var(--danger); }
+    .buffer-custom-row em { font-size: 11px; font-style: normal; color: var(--muted); }
+    .buffer-error { margin: 9px 0 0; color: var(--danger); font-size: 11px; }
+    .buffer-applied { margin: 14px 0 0; font-size: 11px; color: var(--muted); }
+    .settings-lock-dialog { width: min(100% - 40px, 370px); padding: 24px; border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: var(--surface); box-shadow: 0 20px 55px var(--shadow); }
+    .settings-lock-dialog::backdrop { background: rgba(0, 0, 0, .5); }
+    .settings-lock-dialog h2 { margin: 0 0 12px; font-size: 18px; }
+    .settings-lock-dialog p { margin: 0 0 23px; color: var(--muted); font-size: 13px; }
+    .settings-lock-dialog form { display: flex; justify-content: flex-end; }
+    .dialog-confirm { padding: 9px 16px; border: 1px solid var(--mint); border-radius: 8px; background: var(--switch-on); color: var(--text); cursor: pointer; }
+    @keyframes view-forward { from { opacity: .6; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes view-back { from { opacity: .6; transform: translateX(-12px); } to { opacity: 1; transform: translateX(0); } }
+    :root[data-color-scheme="light"] {
+      color-scheme: light;
+      --canvas: #e9efeb; --surface: #ffffff; --raised: #e7f0eb; --line: #c1d1c7; --text: #18332a;
+      --muted: #536b60; --mint: #1f795e; --amber: #a45320; --shadow: rgba(24, 51, 42, .09);
+      --switch-off: #e4eee8; --switch-thumb: #426b5b; --switch-on: #cfe7db; --danger: #b63f37;
+    }
+    :root[data-color-scheme="light"] .transport-panel { background: var(--surface); }
+    :root[data-color-scheme="light"] .capture-control { border-color: var(--line); color: var(--muted); background: var(--surface); }
+    :root[data-color-scheme="light"] .capture-control.is-online { border-color: var(--mint); background: var(--switch-on); }
+    :root[data-color-scheme="light"] .device-card { border-color: var(--line); background: #f6f8f6; }
+    :root[data-color-scheme="light"] .device-card.is-connected { border-color: var(--mint); background: #edf6f0; }
+    :root[data-color-scheme="light"] [data-transport="lan"] .device-card.is-connected { border-color: var(--amber); background: #faf5ef; }
+    :root[data-color-scheme="light"] .count-chip { background: var(--raised); }
+    :root[data-color-scheme="light"] .device-controls, :root[data-color-scheme="light"] .is-open .panel-expansion { border-color: var(--line); }
+    :root[data-color-scheme="light"] .footnote { color: var(--muted); }
+    @media (max-width: 780px) {
+      .topbar { grid-template-columns: minmax(0, 1fr) 44px; gap: 15px; }
+      .header-tools { grid-column: 1 / -1; justify-self: stretch; justify-content: space-between; }
+      #capture-summary { flex-basis: auto; justify-content: start; }
+      #capture-summary { order: 2; margin-left: auto; }
+      .demo-badge { order: 1; margin-left: 0; }
+    }
+    @media (max-width: 580px) {
+      .settings-category-list, .quality-option-grid { grid-template-columns: 1fr; gap: 12px; }
+      .settings-card { padding: 15px; }
+      .settings-category { min-height: 76px; padding: 15px; }
+      .buffer-custom { flex-wrap: wrap; gap: 12px; }
+      .capture-control { padding: 7px 9px; gap: 9px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <div class="brand-group">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h5l3-4 3 16 3-8h2"></path></svg>
+      </div>
+      <div class="brand-copy"><strong>AudioRouter</strong></div>
+      </div>
+      <button class="settings-button" id="open-settings" type="button" aria-label="打开设置" aria-controls="settings-view" aria-expanded="false" title="设置">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.6 3-.6 2.2-1.5.9-2.2-.6-2.4 4.1L4.5 11v2l-1.6 1.4 2.4 4.1 2.2-.6 1.5.9.6 2.2h4.8l.6-2.2 1.5-.9 2.2.6 2.4-4.1-1.6-1.4v-2l1.6-1.4-2.4-4.1-2.2.6-1.5-.9-.6-2.2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      </button>
+      <div class="header-tools">
+      <div class="status-chip capture-control" id="capture-summary">
+        <span class="capture-copy"><span id="capture-label">音频采集</span><strong id="capture-state" aria-live="polite">已停止</strong></span>
+        <button class="switch" id="capture-toggle" type="button" role="switch" aria-checked="false" aria-label="开启本机音频采集"></button>
+      </div>
+      </div>
+    </header>
+
+    <main>
+      <section id="home-view" aria-label="主页">
+      <section class="transport-grid" aria-label="连接方式">
+        <section class="transport-panel" data-transport="lan" aria-labelledby="lan-title">
+          <header class="transport-head">
+            <span class="transport-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"></rect><path d="M8 20h8M12 16v4M7 9h.01M11 9h.01M15 9h.01M7 12h.01M11 12h.01M15 12h.01"></path></svg></span>
+          <div class="transport-title"><h2 id="lan-title">局域网连接</h2><p>连接同一网络中的设备</p></div>
+            <div class="transport-switch-wrap"><span class="switch-label" data-switch-label="lan">已关闭</span><button class="switch" type="button" role="switch" aria-checked="false" aria-label="开启局域网连接" data-transport-toggle="lan"></button></div>
+          </header>
+          <div class="transport-off"><span class="flow-dot"></span><span>开启后搜索局域网设备</span></div>
+          <div class="panel-expansion" aria-hidden="true" inert>
+            <div class="panel-clip"><div class="panel-body">
+              <div class="device-toolbar">
+                <div class="device-toolbar-copy"><strong>局域网内的设备</strong><span data-scan-status="lan">开启后自动发现同一网络设备</span></div>
+                <span class="count-chip" data-device-count="lan">0 台</span>
+                <button class="refresh-button" type="button" data-refresh="lan" aria-label="刷新局域网设备" title="刷新局域网设备"><span class="refresh-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8 8 0 0 0 14.9 3.9L21 15"></path><path d="M21 20v-5h-5"></path></svg></span></button>
+              </div>
+              <div class="device-list" data-device-list="lan"></div>
+            </div></div>
+          </div>
+        </section>
+
+        <section class="transport-panel" data-transport="bluetooth" aria-labelledby="bluetooth-title">
+          <header class="transport-head">
+            <span class="transport-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10-5 4V3l5 4L7 17"></path></svg></span>
+            <div class="transport-title"><h2 id="bluetooth-title">蓝牙连接</h2><p>连接电脑已配对的设备</p></div>
+            <div class="transport-switch-wrap"><span class="switch-label" data-switch-label="bluetooth">已关闭</span><button class="switch" type="button" role="switch" aria-checked="false" aria-label="开启蓝牙连接" data-transport-toggle="bluetooth"></button></div>
+          </header>
+          <div class="transport-off"><span class="flow-dot"></span><span>开启后显示已配对设备</span></div>
+          <div class="panel-expansion" aria-hidden="true" inert>
+            <div class="panel-clip"><div class="panel-body">
+              <div class="device-toolbar">
+                <div class="device-toolbar-copy"><strong>已配对的设备</strong><span data-scan-status="bluetooth">显示 Windows 已配对设备</span></div>
+                <span class="count-chip" data-device-count="bluetooth">0 台</span>
+                <button class="refresh-button" type="button" data-refresh="bluetooth" aria-label="刷新已配对设备" title="刷新已配对设备"><span class="refresh-glyph" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.9-3.9L3 9"></path><path d="M3 4v5h5"></path><path d="M4 13a8 8 0 0 0 14.9 3.9L21 15"></path><path d="M21 20v-5h-5"></path></svg></span></button>
+              </div>
+              <div class="device-list" data-device-list="bluetooth"></div>
+            </div></div>
+          </div>
+        </section>
+      </section>
+
+      </section>
+
+      <section id="settings-view" aria-label="设置" hidden>
+        <div id="settings-overview" class="settings-screen view-enter">
+          <header class="settings-header">
+            <button class="back-button" id="settings-home" type="button" aria-label="返回主页" title="返回主页"><svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"></path></svg></button>
+            <h1>设置</h1>
+          </header>
+          <div class="settings-category-list">
+            <button class="settings-category" type="button" data-settings-category="appearance">
+              <span class="category-icon" aria-hidden="true">◐</span><span class="settings-category-copy"><strong>外观</strong><small>主题与显示方式</small></span><span class="setting-chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"></path></svg></span>
+            </button>
+            <button class="settings-category" type="button" data-settings-category="personalization">
+              <span class="category-icon" aria-hidden="true">✦</span><span class="settings-category-copy"><strong>个性化</strong><small>连接前控制与设备信息</small></span><span class="setting-chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"></path></svg></span>
+            </button>
+            <button class="settings-category" type="button" data-settings-category="transport">
+              <span class="category-icon" aria-hidden="true">⇄</span><span class="settings-category-copy"><strong>音频传输</strong><small>局域网与蓝牙传输方式</small></span><span class="setting-chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"></path></svg></span>
+            </button>
+            <button class="settings-category" type="button" data-settings-category="buffer">
+              <span class="category-icon" aria-hidden="true">◌</span><span class="settings-category-copy"><strong>音频缓冲</strong><small>缓冲数值越高，传输越稳定，延迟越高</small></span><span class="setting-chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"></path></svg></span>
+            </button>
+            <button class="settings-category" type="button" data-settings-category="about">
+              <span class="category-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v6m0-10v.01"></path></svg></span><span class="settings-category-copy"><strong>关于</strong><small>应用信息、数据存储与第三方组件</small></span><span class="setting-chevron" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"></path></svg></span>
+            </button>
+          </div>
+        </div>
+
+        <div id="settings-detail" hidden>
+          <header class="settings-header">
+            <button class="back-button" id="settings-overview-back" type="button" aria-label="返回设置" title="返回设置"><svg viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"></path></svg></button>
+            <h1 id="settings-detail-title">设置</h1>
+          </header>
+
+          <section class="settings-detail-panel" data-settings-detail="appearance" hidden>
+            <section class="settings-card"><h2>外观</h2><div class="theme-list">
+              <button class="theme-choice" type="button" data-theme-choice="light" aria-pressed="false"><span class="theme-dot">○</span><span class="settings-category-copy"><strong>浅色</strong><small>使用浅色界面</small></span></button>
+              <button class="theme-choice" type="button" data-theme-choice="dark" aria-pressed="true"><span class="theme-dot">●</span><span class="settings-category-copy"><strong>深色</strong><small>使用深色界面</small></span></button>
+              <button class="theme-choice" type="button" data-theme-choice="system" aria-pressed="false"><span class="theme-dot">◒</span><span class="settings-category-copy"><strong>跟随系统</strong><small>跟随电脑系统的外观设置</small></span></button>
+            </div></section>
+          </section>
+
+          <section class="settings-detail-panel" data-settings-detail="personalization" hidden>
+            <section class="settings-card compact-setting-card"><div class="setting-row"><div class="setting-copy"><strong>连接前显示音频控制选项</strong><small>开启后，连接设备前也可以提前调整发送、接收和音量设置。</small></div><button class="switch" id="preconnect-toggle" type="button" role="switch" aria-checked="false" aria-label="连接前显示音频控制选项"></button></div></section>
+            <section class="settings-card compact-setting-card"><div class="setting-row"><div class="setting-copy"><strong>显示 IP 地址</strong><small>在局域网设备名称下显示设备的 IP 地址。</small></div><button class="switch" id="show-ip-toggle" type="button" role="switch" aria-checked="false" aria-label="显示 IP 地址"></button></div></section>
+            <section class="settings-card compact-setting-card"><div class="setting-row"><div class="setting-copy"><strong>开机自启动</strong><small>登录 Windows 后自动启动 AudioRouter。</small></div><button class="switch" id="startup-toggle" type="button" role="switch" aria-checked="false" aria-label="开机自启动"></button></div></section>
+            <section class="settings-card compact-setting-card"><div class="setting-row"><div class="setting-copy"><strong>应用上次关闭时的连接状态</strong><small>下次启动时恢复上次关闭前已开启的局域网和蓝牙连接。</small></div><button class="switch" id="restore-connection-toggle" type="button" role="switch" aria-checked="false" aria-label="应用上次关闭时的连接状态"></button></div></section>
+            <section class="settings-card compact-setting-card"><div class="setting-row"><div class="setting-copy"><strong>自动尝试连接</strong><small>设备连接失败时，自动按设定的次数和间隔重试。</small></div><button class="switch" id="auto-connect-toggle" type="button" role="switch" aria-checked="false" aria-label="自动尝试连接"></button></div><div class="auto-connect-options" id="auto-connect-options"><div class="auto-connect-option-row"><div><strong>自动连接尝试次数</strong><small>达到次数后停止，持续尝试不会停止。</small></div><div class="setting-dropdown" id="auto-connect-attempts-dropdown"><button class="setting-select" id="auto-connect-attempts" type="button" aria-haspopup="listbox" aria-controls="auto-connect-attempts-menu" aria-expanded="false"><span data-auto-connect-attempts-label>3 次</span><svg class="setting-select-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><div class="setting-menu" id="auto-connect-attempts-menu" role="listbox" aria-label="自动连接尝试次数"><button class="setting-option" type="button" role="option" data-auto-connect-attempts="1">1 次</button><button class="setting-option" type="button" role="option" data-auto-connect-attempts="2">2 次</button><button class="setting-option" type="button" role="option" data-auto-connect-attempts="3">3 次</button><button class="setting-option" type="button" role="option" data-auto-connect-attempts="4">4 次</button><button class="setting-option" type="button" role="option" data-auto-connect-attempts="5">5 次</button><button class="setting-option" type="button" role="option" data-auto-connect-attempts="0">持续尝试</button></div></div></div><div class="auto-connect-option-row"><div><strong>自动连接尝试间隔</strong><small>每次连接失败后的等待时间。</small></div><div class="setting-dropdown" id="auto-connect-interval-dropdown"><button class="setting-select" id="auto-connect-interval" type="button" aria-haspopup="listbox" aria-controls="auto-connect-interval-menu" aria-expanded="false"><span data-auto-connect-interval-label>3 秒</span><svg class="setting-select-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><div class="setting-menu" id="auto-connect-interval-menu" role="listbox" aria-label="自动连接尝试间隔"><button class="setting-option" type="button" role="option" data-auto-connect-interval="1">1 秒</button><button class="setting-option" type="button" role="option" data-auto-connect-interval="2">2 秒</button><button class="setting-option" type="button" role="option" data-auto-connect-interval="3">3 秒</button><button class="setting-option" type="button" role="option" data-auto-connect-interval="5">5 秒</button><button class="setting-option" type="button" role="option" data-auto-connect-interval="10">10 秒</button><button class="setting-option" type="button" role="option" data-auto-connect-interval="30">30 秒</button></div></div></div></div></section>
+            <section class="settings-card compact-setting-card"><div class="setting-row"><div class="setting-copy"><strong>退出行为</strong><small>点击窗口关闭按钮时的处理方式。</small></div><div class="setting-dropdown" id="exit-behavior-dropdown"><button class="setting-select" id="exit-behavior" type="button" aria-label="退出行为" aria-haspopup="listbox" aria-controls="exit-behavior-menu" aria-expanded="false"><span data-exit-behavior-label>完全退出应用</span><svg class="setting-select-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></button><div class="setting-menu" id="exit-behavior-menu" role="listbox" aria-label="退出行为"><button class="setting-option" type="button" role="option" data-exit-behavior="full_exit" aria-selected="true">完全退出应用</button><button class="setting-option" type="button" role="option" data-exit-behavior="minimize_to_tray" aria-selected="false">最小化到托盘</button></div></div></div></section>
+          </section>
+
+          <section class="settings-detail-panel" data-settings-detail="transport" hidden>
+            <section class="settings-card">
+              <div class="quality-panel-heading"><strong>局域网连接</strong><small>选择局域网音频的传输方式与速率。</small></div>
+              <div class="quality-mode-list">
+                <button class="quality-mode-choice" type="button" data-lan-mode="compressed" aria-pressed="true"><span class="settings-category-copy"><strong>经过压缩</strong><small>占用带宽较少，适合普通网络</small></span><span class="quality-check">✓</span></button>
+                <button class="quality-mode-choice" type="button" data-lan-mode="raw" aria-pressed="false"><span class="settings-category-copy"><strong>未经压缩</strong><small>保留原始音质，需要更高带宽</small></span><span class="quality-check">✓</span></button>
+              </div>
+              <div class="quality-rate-panel is-open" id="compressed-rate-panel"><div class="quality-rate-heading"><strong>压缩后传输速率</strong><small>数值越高，音质越好，占用带宽也越高。</small></div><div class="quality-option-grid">
+                <button class="quality-option" type="button" data-compressed-rate="64" aria-pressed="false"><span><strong>64 kb/s</strong><small>低带宽</small></span></button><button class="quality-option" type="button" data-compressed-rate="128" aria-pressed="true"><span><strong>128 kb/s</strong><small>平衡</small></span></button><button class="quality-option" type="button" data-compressed-rate="256" aria-pressed="false"><span><strong>256 kb/s</strong><small>高质量</small></span></button><button class="quality-option" type="button" data-compressed-rate="450" aria-pressed="false"><span><strong>450 kb/s</strong><small>高保真</small></span></button>
+              </div></div>
+              <div class="quality-rate-panel" id="raw-rate-panel"><div class="quality-rate-heading"><strong>未经压缩的传输速率</strong><small>48 kHz、16 位、双声道 PCM 约为 1,536 kb/s。</small></div><div class="quality-option-grid is-single"><button class="quality-option" type="button" data-raw-rate="1536" aria-pressed="true"><span><strong>1,536 kb/s</strong><small>48 kHz · 16 位 · 双声道</small></span></button></div></div>
+            </section>
+            <section class="settings-card">
+              <div class="quality-panel-heading"><strong>蓝牙连接</strong><small>选择蓝牙音频传输协议。</small></div>
+              <div class="quality-protocol-list"><button class="quality-protocol" type="button" data-bluetooth-protocol="auto" aria-pressed="true"><span class="settings-category-copy"><strong>自动</strong><small>根据设备能力自动选择</small></span><span class="quality-check">✓</span></button><button class="quality-protocol" type="button" data-bluetooth-protocol="opus" aria-pressed="false"><span class="settings-category-copy"><strong>Opus</strong><small>较好的音质与延迟平衡</small></span><span class="quality-check">✓</span></button><button class="quality-protocol" type="button" data-bluetooth-protocol="pcm" aria-pressed="false"><span class="settings-category-copy"><strong>PCM</strong><small>未经压缩，带宽需求较高</small></span><span class="quality-check">✓</span></button></div>
+            </section>
+          </section>
+
+          <section class="settings-detail-panel" data-settings-detail="buffer" hidden>
+            <section class="settings-card buffer-setting-card"><h2>音频缓冲</h2><p class="settings-helper">缓冲数值越高，传输越稳定，延迟越高</p><div class="quality-option-grid buffer-option-grid">
+              <button class="quality-option" type="button" data-buffer-choice="20" aria-pressed="false"><span><strong>20 ms</strong><small>低延迟</small></span></button><button class="quality-option" type="button" data-buffer-choice="60" aria-pressed="true"><span><strong>60 ms</strong><small>平衡</small></span></button><button class="quality-option" type="button" data-buffer-choice="120" aria-pressed="false"><span><strong>120 ms</strong><small>稳定</small></span></button><button class="quality-option" type="button" data-buffer-choice="240" aria-pressed="false"><span><strong>240 ms</strong><small>高稳定</small></span></button>
+            </div><div class="buffer-custom" data-buffer-custom><button class="buffer-custom-select" type="button" data-buffer-choice="custom" aria-pressed="false"><span><strong>自定义缓冲</strong><small>输入 20–240 的正整数</small></span></button><div class="buffer-custom-row"><input id="custom-buffer-input" type="number" min="20" max="240" step="1" value="80" aria-label="自定义缓冲时间" aria-invalid="false"><em>ms</em></div><p class="buffer-error" id="buffer-error" hidden>请输入 20–240 的正整数。</p></div><p class="buffer-applied" id="buffer-applied">当前使用：60 ms</p></section>
+          </section>
+          <section class="settings-detail-panel" data-settings-detail="about" hidden>
+            <section class="settings-card">
+              <div class="about-heading"><img class="about-icon" id="about-icon" src="../icons/audiorouter-icon.png" alt="AudioRouter 应用图标"><div><h2>AudioRouter</h2><span class="about-version" id="about-version">V1.17</span></div></div>
+              <p class="about-description">在 Windows 电脑与 Android 手机之间双向传输实时音频。</p>
+              <dl class="about-details">
+                <div><dt>音频与连接</dt><dd>支持局域网 TCP、Bluetooth Classic RFCOMM、PCM 未压缩传输与 Opus 压缩传输。支持双声道、设备独立音量与可调音频缓冲。</dd></div>
+                <div><dt>数据存储</dt><dd id="about-storage">网页预览设置保存在浏览器本地存储中。Windows 程序的设置和 WebView2 数据保存在程序目录下的 data 文件夹。</dd></div>
+                <div><dt>作者信息</dt><dd>作者：CutePillow</dd></div>
+                <div><dt>项目地址</dt><dd>GitHub 仓库地址：待补充</dd></div>
+                <div><dt>项目许可证</dt><dd>尚未确定，发布时将补充项目许可证。第三方组件遵循各自的许可证。</dd></div>
+              </dl>
+            </section>
+            <p class="about-credits">第三方组件与致谢<br>Windows：Rust、Tao、Wry / WebView2、Opus<br>Android：Android SDK、Concentus<br>感谢相关开源项目与贡献者。</p>
+          </section>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <dialog class="settings-lock-dialog" id="settings-lock-dialog"><h2>设置暂不可调整</h2><p>请关闭传输后再调整设置</p><form method="dialog"><button class="dialog-confirm" type="submit">知道了</button></form></dialog>
+  <dialog class="settings-lock-dialog" id="transport-error-dialog" aria-labelledby="transport-error-title" aria-describedby="transport-error-message"><h2 id="transport-error-title">连接未能开启</h2><p id="transport-error-message"></p><form method="dialog"><button class="dialog-confirm" type="submit">知道了</button></form></dialog>
+
+  <script>
+    const sampleDevices = {
+      lan: [
+        { id: "lan-pixel", name: "Pixel 9 Pro", detail: "192.168.1.32", kind: "phone" },
+        { id: "lan-galaxy", name: "Galaxy S24", detail: "192.168.1.46", kind: "phone" },
+      ],
+      bluetooth: [
+        { id: "bt-pixel", name: "Pixel 9 Pro", detail: "已配对设备", kind: "phone" },
+        { id: "bt-oneplus", name: "OnePlus 12", detail: "已配对设备", kind: "phone" },
+      ],
+    };
+
+    const DEVICE_PREFERENCES_KEY = "audiorouter-device-preferences-v1";
+    const devicePreferences = (() => {
+      try {
+        return JSON.parse(localStorage.getItem(DEVICE_PREFERENCES_KEY) || "{}");
+      } catch {
+        return {};
+      }
+    })();
+
+    function rememberDeviceSettings(device) {
+      if (!device?.id) return;
+      devicePreferences[device.id] = {
+        sendEnabled: Boolean(device.sendEnabled),
+        receiveEnabled: Boolean(device.receiveEnabled),
+        sendVolume: Number(device.sendVolume),
+        receiveVolume: Number(device.receiveVolume),
+      };
+      try {
+        localStorage.setItem(DEVICE_PREFERENCES_KEY, JSON.stringify(devicePreferences));
+      } catch {}
+    }
+
+    function makeDevice(device) {
+      const remembered = devicePreferences[device.id] || {};
+      return {
+        ...device,
+        connected: false,
+        connecting: false,
+        connectedAt: null,
+        sendEnabled: remembered.sendEnabled ?? false,
+        receiveEnabled: remembered.receiveEnabled ?? true,
+        sendVolume: remembered.sendVolume ?? 80,
+        receiveVolume: remembered.receiveVolume ?? 80,
+      };
+    }
+
+    const state = {
+      captureEnabled: false,
+      transports: {
+        lan: { enabled: false, scanCount: 0, devices: sampleDevices.lan.map(makeDevice) },
+        bluetooth: { enabled: false, scanCount: 0, devices: sampleDevices.bluetooth.map(makeDevice) },
+      },
+    };
+
+    const WEB_PREFERENCES_KEY = "audiorouter-web-preferences-v1";
+    let savedWebPreferences = {};
+    try { savedWebPreferences = JSON.parse(localStorage.getItem(WEB_PREFERENCES_KEY) || "{}"); } catch {}
+    const preferences = {
+      theme: "system",
+      preconnectControls: false,
+      showIp: false,
+      lanMode: "raw",
+      compressedRate: 128,
+      rawRate: 1536,
+      bluetoothProtocol: "auto",
+      buffer: 60,
+      customBuffer: 80,
+      launchOnStartup: false,
+      exitBehavior: "full_exit",
+      restoreConnectionState: false,
+      autoConnect: false,
+      autoConnectAttempts: 3,
+      autoConnectIntervalSeconds: 3,
+      ...savedWebPreferences,
+    };
+
+    const hostMode = typeof window.ipc?.postMessage === "function";
+    let lastHostRenderSignature = "";
+    let lastHostPreferencesSignature = "";
+    function persistWebPreferences() {
+      try { localStorage.setItem(WEB_PREFERENCES_KEY, JSON.stringify(preferences)); } catch {}
+    }
+    function hostPost(action, payload = {}) {
+      if (action === "setting") persistWebPreferences();
+      if (!hostMode) return false;
+      window.ipc.postMessage(JSON.stringify({ action, ...payload }));
+      return true;
+    }
+
+    window.__audioRouterShowTransportError = (message) => {
+      const dialog = document.querySelector("#transport-error-dialog");
+      document.querySelector("#transport-error-message").textContent = message;
+      if (!dialog.open) dialog.showModal();
+    };
+
+    window.__audioRouterApplyState = (data) => {
+      if (!hostMode || !data) return;
+      const stableState = {
+        ...data,
+        lastAction: "",
+        devices: (data.devices || []).map(({ connectedAt, ...device }) => device),
+      };
+      const signature = JSON.stringify(stableState);
+      if (signature === lastHostRenderSignature) return;
+      lastHostRenderSignature = signature;
+      state.captureEnabled = Boolean(data.captureEnabled);
+      state.transports.lan.enabled = Boolean(data.lanEnabled);
+      state.transports.bluetooth.enabled = Boolean(data.bluetoothEnabled);
+      for (const transport of ["lan", "bluetooth"]) {
+        state.transports[transport].devices = (data.devices || [])
+          .filter((device) => device.transport === transport)
+          .map((device) => ({ ...device, connecting: false }));
+      }
+      if (data.preferences) {
+        const preferencesSignature = JSON.stringify(data.preferences);
+        if (preferencesSignature !== lastHostPreferencesSignature) {
+          lastHostPreferencesSignature = preferencesSignature;
+          Object.assign(preferences, data.preferences);
+          applyTheme();
+          syncSettingsControls();
+        }
+      }
+      renderAll();
+    };
+
+    const settingsLabels = {
+      appearance: "外观",
+      personalization: "个性化",
+      transport: "音频传输",
+      buffer: "音频缓冲",
+      about: "关于",
+    };
+
+    const appInfo = window.__audioRouterAppInfo;
+    if (appInfo) {
+      document.querySelector("#about-version").textContent = "V1.17";
+      document.querySelector("#about-icon").src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(appInfo.iconSvg)}`;
+      const storage = document.querySelector("#about-storage");
+      storage.textContent = "设置、设备偏好、窗口大小和 WebView2 数据保存在以下目录：";
+      const path = document.createElement("span");
+      path.className = "about-path";
+      path.textContent = appInfo.dataDirectory || "无法读取数据目录";
+      storage.append(path);
+    }
+
+    function hasActiveSession() {
+      return state.captureEnabled || Object.values(state.transports).some((transport) => transport.devices.some((device) => device.connected));
+    }
+
+    function updateSettingsLock() {
+      const locked = hasActiveSession();
+      document.querySelectorAll('[data-settings-category="transport"], [data-settings-category="buffer"]').forEach((category) => {
+        category.classList.toggle("is-locked", locked);
+        category.setAttribute("aria-disabled", String(locked));
+      });
+      document.querySelectorAll('[data-settings-detail="transport"], [data-settings-detail="buffer"]').forEach((panel) => {
+        panel.classList.toggle("is-locked", locked);
+        panel.setAttribute("aria-disabled", String(locked));
+      });
+    }
+
+    function showSettingsLock() {
+      const dialog = document.querySelector("#settings-lock-dialog");
+      if (dialog?.showModal) dialog.showModal();
+    }
+
+    function setPressed(selector, value, attribute = "aria-pressed") {
+      document.querySelectorAll(selector).forEach((element) => element.setAttribute(attribute, String(element.dataset.value === value || element.dataset.themeChoice === value || element.dataset.lanMode === value || element.dataset.compressedRate === String(value) || element.dataset.rawRate === String(value) || element.dataset.bluetoothProtocol === value || element.dataset.bufferChoice === String(value))));
+    }
+
+    function initializeSettings() {
+      applyTheme();
+      syncSettingsControls();
+      window.matchMedia?.("(prefers-color-scheme: light)").addEventListener?.("change", () => {
+        if (preferences.theme === "system") applyTheme();
+      });
+    }
+
+    function syncSettingsControls() {
+      document.querySelector("#preconnect-toggle").setAttribute("aria-checked", String(preferences.preconnectControls));
+      document.querySelector("#show-ip-toggle").setAttribute("aria-checked", String(preferences.showIp));
+      document.querySelector("#startup-toggle").setAttribute("aria-checked", String(preferences.launchOnStartup));
+      document.querySelector("#restore-connection-toggle").setAttribute("aria-checked", String(preferences.restoreConnectionState));
+      document.querySelector("#auto-connect-toggle").setAttribute("aria-checked", String(preferences.autoConnect));
+      document.querySelector("#auto-connect-options").classList.toggle("is-open", preferences.autoConnect);
+      syncAutoConnectControls();
+      syncExitBehaviorControl();
+      setPressed("[data-theme-choice]", preferences.theme);
+      setPressed("[data-lan-mode]", preferences.lanMode);
+      setPressed("[data-compressed-rate]", preferences.compressedRate);
+      setPressed("[data-raw-rate]", preferences.rawRate);
+      setPressed("[data-bluetooth-protocol]", preferences.bluetoothProtocol);
+      updateBufferChoices();
+      updateQualityRatePanels();
+    }
+
+    function syncExitBehaviorControl() {
+      const validValue = preferences.exitBehavior === "minimize_to_tray" ? "minimize_to_tray" : "full_exit";
+      preferences.exitBehavior = validValue;
+      const selectedOption = document.querySelector(`[data-exit-behavior="${validValue}"]`);
+      document.querySelector("[data-exit-behavior-label]").textContent = selectedOption.textContent;
+      document.querySelectorAll("[data-exit-behavior]").forEach((option) => {
+        option.setAttribute("aria-selected", String(option.dataset.exitBehavior === validValue));
+      });
+    }
+
+    function syncAutoConnectControls() {
+      const attempts = Number(preferences.autoConnectAttempts);
+      const interval = Number(preferences.autoConnectIntervalSeconds);
+      const attemptsOption = document.querySelector(`[data-auto-connect-attempts="${attempts}"]`);
+      const intervalOption = document.querySelector(`[data-auto-connect-interval="${interval}"]`);
+      document.querySelector("[data-auto-connect-attempts-label]").textContent = attemptsOption?.textContent || "3 次";
+      document.querySelector("[data-auto-connect-interval-label]").textContent = intervalOption?.textContent || "3 秒";
+      document.querySelectorAll("[data-auto-connect-attempts]").forEach((option) => option.setAttribute("aria-selected", String(Number(option.dataset.autoConnectAttempts) === attempts)));
+      document.querySelectorAll("[data-auto-connect-interval]").forEach((option) => option.setAttribute("aria-selected", String(Number(option.dataset.autoConnectInterval) === interval)));
+    }
+
+    function setExitBehaviorMenuOpen(open, focusTarget = false) {
+      const dropdown = document.querySelector("#exit-behavior-dropdown");
+      const button = document.querySelector("#exit-behavior");
+      dropdown.classList.toggle("is-open", open);
+      button.setAttribute("aria-expanded", String(open));
+      if (focusTarget) {
+        const target = open
+          ? dropdown.querySelector('[role="option"][aria-selected="true"]')
+          : button;
+        target?.focus();
+      }
+    }
+
+    function chooseExitBehavior(value) {
+      if (value !== "full_exit" && value !== "minimize_to_tray") return;
+      preferences.exitBehavior = value;
+      syncExitBehaviorControl();
+      setExitBehaviorMenuOpen(false, true);
+      hostPost("setting", { key: "exitBehavior", value });
+    }
+
+    function applyTheme() {
+      const systemTheme = window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      document.documentElement.dataset.colorScheme = preferences.theme === "system" ? systemTheme : preferences.theme;
+    }
+
+    function updateBufferChoices() {
+      const customSelected = preferences.buffer === "custom";
+      document.querySelector("[data-buffer-custom]").classList.toggle("is-active", customSelected);
+      document.querySelectorAll("[data-buffer-choice]").forEach((choice) => {
+        const selected = choice.dataset.bufferChoice === "custom"
+          ? customSelected
+          : preferences.buffer === Number(choice.dataset.bufferChoice);
+        choice.setAttribute("aria-pressed", String(selected));
+      });
+      const input = document.querySelector("#custom-buffer-input");
+      const customValue = String(preferences.customBuffer);
+      if (input.value !== customValue && document.activeElement !== input) input.value = customValue;
+      const applied = document.querySelector("#buffer-applied");
+      const appliedText = `当前使用：${preferences.buffer === "custom" ? preferences.customBuffer : preferences.buffer} ms`;
+      if (applied.textContent !== appliedText) applied.textContent = appliedText;
+    }
+
+    function updateQualityRatePanels() {
+      document.querySelector("#compressed-rate-panel").classList.toggle("is-open", preferences.lanMode === "compressed");
+      document.querySelector("#raw-rate-panel").classList.toggle("is-open", preferences.lanMode === "raw");
+    }
+
+    function showSettingsOverview(direction = "forward") {
+      const overview = document.querySelector("#settings-overview");
+      const detail = document.querySelector("#settings-detail");
+      detail.hidden = true;
+      overview.hidden = false;
+      overview.className = `settings-screen view-${direction}`;
+    }
+
+    function showSettingsDetail(category, direction = "forward") {
+      const overview = document.querySelector("#settings-overview");
+      const detail = document.querySelector("#settings-detail");
+      if ((category === "transport" || category === "buffer") && hasActiveSession()) {
+        showSettingsLock();
+        return;
+      }
+      overview.hidden = true;
+      detail.hidden = false;
+      detail.className = `view-${direction}`;
+      detail.querySelector("#settings-detail-title").textContent = settingsLabels[category];
+      detail.querySelectorAll("[data-settings-detail]").forEach((panel) => { panel.hidden = panel.dataset.settingsDetail !== category; });
+    }
+
+    function openSettings() {
+      document.querySelector("#home-view").hidden = true;
+      document.querySelector("#settings-view").hidden = false;
+      document.querySelector("#open-settings").setAttribute("aria-expanded", "true");
+      showSettingsOverview("forward");
+    }
+
+    function closeSettings() {
+      document.querySelector("#settings-view").hidden = true;
+      document.querySelector("#home-view").hidden = false;
+      document.querySelector("#open-settings").setAttribute("aria-expanded", "false");
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[char]));
+    }
+
+    function formatDuration(milliseconds) {
+      const seconds = Math.floor(milliseconds / 1000);
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const remainder = seconds % 60;
+      return hours > 0
+        ? `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`
+        : `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
+    }
+
+    function sortDevices(devices) {
+      return [...devices].sort((left, right) => Number(right.connected) - Number(left.connected) || left.name.localeCompare(right.name, "zh-CN"));
+    }
+
+    function deviceMarkup(device, transport) {
+      const connected = device.connected;
+      const transportIcon = transport === "lan"
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2"></rect><path d="M10 18.5h4"></path></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="2.5" width="10" height="19" rx="2"></rect><path d="M10 18.5h4"></path></svg>';
+      const controlsVisible = connected || preferences.preconnectControls;
+      const actionStatus = device.connecting ? "连接中" : "未连接";
+      const controls = `
+        <div class="device-controls">
+          <div class="control-row">
+            <div class="control-heading">
+              <button class="mini-switch" type="button" role="switch" aria-checked="${device.sendEnabled}" aria-label="${device.sendEnabled ? "关闭" : "开启"}${escapeHtml(device.name)}的发送音频" data-device-switch="send" data-device-id="${escapeHtml(device.id)}" data-transport="${transport}"></button>
+              <span class="control-copy"><strong>发送音频</strong><span>电脑播放声音 → 此设备</span></span>
+            </div>
+            <input type="range" min="0" max="100" value="${device.sendVolume}" aria-label="${escapeHtml(device.name)}发送音量" data-device-volume="send" data-device-id="${escapeHtml(device.id)}" data-transport="${transport}" ${device.sendEnabled ? "" : "disabled"}>
+            <span class="volume-value" data-volume-value="send:${escapeHtml(device.id)}">${device.sendVolume}%</span>
+          </div>
+          <div class="control-row">
+            <div class="control-heading">
+              <button class="mini-switch" type="button" role="switch" aria-checked="${device.receiveEnabled}" aria-label="${device.receiveEnabled ? "关闭" : "开启"}${escapeHtml(device.name)}的接收音频" data-device-switch="receive" data-device-id="${escapeHtml(device.id)}" data-transport="${transport}"></button>
+              <span class="control-copy"><strong>接收音频</strong><span>此设备声音 → 电脑播放设备</span></span>
+            </div>
+            <input type="range" min="0" max="100" value="${device.receiveVolume}" aria-label="${escapeHtml(device.name)}接收音量" data-device-volume="receive" data-device-id="${escapeHtml(device.id)}" data-transport="${transport}" ${device.receiveEnabled ? "" : "disabled"}>
+            <span class="volume-value" data-volume-value="receive:${escapeHtml(device.id)}">${device.receiveVolume}%</span>
+          </div>
+        </div>`;
+
+      return `<article class="device-card${connected ? " is-connected" : ""}" data-device-card="${escapeHtml(device.id)}">
+        <div class="device-topline">
+          <span class="device-avatar" aria-hidden="true">${transportIcon}</span>
+          <div class="device-name-block"><h3 class="device-name">${escapeHtml(device.name)}</h3><p class="device-detail">${escapeHtml(transport === "lan" && !preferences.showIp ? "局域网设备" : device.detail)}</p></div>
+          <span class="device-status" data-connected-status ${connected ? "" : "hidden"}><span class="online-dot"></span>已连接</span>
+          <div class="device-actions">
+            <span class="device-status" data-action-status ${connected ? "hidden" : ""}><span class="online-dot"></span><span data-action-status-text>${escapeHtml(actionStatus)}</span></span>
+            <span class="connection-time" data-duration-for="${escapeHtml(device.id)}" ${connected ? "" : "hidden"}>在线 ${formatDuration(Date.now() - (device.connectedAt || Date.now()))}</span>
+            <button class="action-button${connected ? " is-disconnect" : ""}" type="button" data-device-action="${connected ? "disconnect" : "connect"}" data-device-id="${escapeHtml(device.id)}" data-transport="${transport}" ${!connected && device.connecting ? "disabled" : ""}>${connected ? "断开" : device.connecting ? "连接中…" : "连接"}</button>
+          </div>
+        </div>
+        <div data-device-controls ${controlsVisible ? "" : "hidden"}>${controls}</div>
+      </article>`;
+    }
+
+    function updateDeviceCard(card, device, transport) {
+      const connected = Boolean(device.connected);
+      card.dataset.deviceCard = device.id;
+      card.querySelectorAll("[data-device-id]").forEach((control) => { control.dataset.deviceId = device.id; });
+      const connectionTime = card.querySelector(".connection-time");
+      connectionTime.dataset.durationFor = device.id;
+      card.classList.toggle("is-connected", connected);
+      const name = card.querySelector(".device-name");
+      if (name.textContent !== device.name) name.textContent = device.name;
+      const detail = card.querySelector(".device-detail");
+      const detailText = transport === "lan" && !preferences.showIp ? "局域网设备" : device.detail;
+      if (detail.textContent !== detailText) detail.textContent = detailText;
+
+      const connectedStatus = card.querySelector("[data-connected-status]");
+      connectedStatus.hidden = !connected;
+      const actionStatus = card.querySelector("[data-action-status]");
+      actionStatus.hidden = connected;
+      const actionStatusText = card.querySelector("[data-action-status-text]");
+      const nextStatusText = device.connecting ? "连接中" : "未连接";
+      if (actionStatusText.textContent !== nextStatusText) actionStatusText.textContent = nextStatusText;
+      connectionTime.hidden = !connected;
+      const actionButton = card.querySelector("[data-device-action]");
+      actionButton.dataset.deviceAction = connected ? "disconnect" : "connect";
+      actionButton.classList.toggle("is-disconnect", connected);
+      actionButton.disabled = !connected && Boolean(device.connecting);
+      const actionText = connected ? "断开" : device.connecting ? "连接中…" : "连接";
+      if (actionButton.textContent !== actionText) actionButton.textContent = actionText;
+      const controls = card.querySelector("[data-device-controls]");
+      controls.hidden = !(connected || preferences.preconnectControls);
+
+      for (const direction of ["send", "receive"]) {
+        const enabled = Boolean(device[`${direction}Enabled`]);
+        const toggle = card.querySelector(`[data-device-switch="${direction}"]`);
+        if (!toggle) continue;
+        toggle.setAttribute("aria-checked", String(enabled));
+        toggle.setAttribute("aria-label", `${enabled ? "关闭" : "开启"}${device.name}的${direction === "send" ? "发送" : "接收"}音频`);
+        const slider = card.querySelector(`[data-device-volume="${direction}"]`);
+        if (slider) {
+          slider.disabled = !enabled;
+          const volume = String(device[`${direction}Volume`]);
+          if (slider.value !== volume && document.activeElement !== slider) slider.value = volume;
+          const value = slider.closest(".control-row").querySelector(".volume-value");
+          const volumeText = `${volume}%`;
+          if (value.textContent !== volumeText) value.textContent = volumeText;
+        }
+      }
+    }
+
+    function renderTransport(transport) {
+      const transportState = state.transports[transport];
+      const panel = document.querySelector(`[data-transport="${transport}"].transport-panel`);
+      const toggle = document.querySelector(`[data-transport-toggle="${transport}"]`);
+      const label = document.querySelector(`[data-switch-label="${transport}"]`);
+      const expansion = panel.querySelector(".panel-expansion");
+      const list = document.querySelector(`[data-device-list="${transport}"]`);
+      const count = document.querySelector(`[data-device-count="${transport}"]`);
+      const scanStatus = document.querySelector(`[data-scan-status="${transport}"]`);
+      panel.classList.toggle("is-open", transportState.enabled);
+      toggle.setAttribute("aria-checked", String(transportState.enabled));
+      toggle.setAttribute("aria-label", `${transportState.enabled ? "关闭" : "开启"}${transport === "lan" ? "局域网连接" : "蓝牙连接"}`);
+      label.textContent = transportState.enabled ? "已开启" : "已关闭";
+      expansion.setAttribute("aria-hidden", String(!transportState.enabled));
+      expansion.inert = !transportState.enabled;
+      const sorted = sortDevices(transportState.devices);
+      const connected = sorted.filter((device) => device.connected).length;
+      const countText = `${sorted.length} 台${connected ? ` · ${connected} 已连接` : ""}`;
+      if (count.textContent !== countText) count.textContent = countText;
+      const scanStatusText = transport === "lan"
+        ? `${transportState.scanCount > 0 ? "已刷新" : "已发现"} ${sorted.length} 台设备 · 示例地址`
+        : `${transportState.scanCount > 0 ? "已刷新" : "当前显示"} ${sorted.length} 台已配对设备`;
+      if (scanStatus.textContent !== scanStatusText) scanStatus.textContent = scanStatusText;
+
+      if (!sorted.length) {
+        if (!list.querySelector(".empty-state")) {
+          list.replaceChildren();
+          const empty = document.createElement("div");
+          empty.className = "empty-state";
+          empty.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"></circle><path d="m16 16 4 4M11 8v6M8 11h6"></path></svg><strong>${transport === "lan" ? "暂未发现局域网设备" : "没有已配对设备"}</strong><span>${transport === "lan" ? "确认手机与电脑处于同一网络后刷新" : "请先在 Windows 蓝牙设置中配对手机"}</span>`;
+          list.append(empty);
+        }
+        return;
+      }
+
+      list.querySelector(".empty-state")?.remove();
+      const existingCards = [...list.querySelectorAll("[data-device-card]")];
+      const existing = new Map(existingCards
+        .map((card) => [card.dataset.deviceCard, card]));
+      const reusedCards = new Set();
+      sorted.forEach((device, index) => {
+        let card = existing.get(device.id);
+        if (!card) {
+          const matchingCards = existingCards.filter((candidate) => {
+            if (reusedCards.has(candidate)) return false;
+            const previousId = candidate.dataset.deviceCard;
+            const sameLanAddress = transport === "lan"
+              && previousId.startsWith("lan-discovered:")
+              && device.id === `lan:${previousId.slice("lan-discovered:".length)}`;
+            const sameBluetoothName = transport === "bluetooth"
+              && candidate.querySelector(".device-name").textContent === device.name;
+            return sameLanAddress || sameBluetoothName;
+          });
+          if (matchingCards.length) card = matchingCards[0];
+        }
+        if (!card) {
+          const template = document.createElement("template");
+          template.innerHTML = deviceMarkup(device, transport);
+          card = template.content.firstElementChild;
+        }
+        reusedCards.add(card);
+        updateDeviceCard(card, device, transport);
+        const current = list.children[index] || null;
+        if (current !== card) list.insertBefore(card, current);
+      });
+      for (const card of existingCards) if (!reusedCards.has(card)) card.remove();
+    }
+
+    function updateOverview() {
+      const sending = Object.values(state.transports)
+        .flatMap((transport) => transport.devices)
+        .filter((device) => device.connected && device.sendEnabled);
+      const captureActive = state.captureEnabled;
+      const captureState = captureActive ? (sending.length ? `采集中 · 发送至 ${sending.length} 台` : "采集中 · 等待发送") : "已停止";
+      const captureStateElement = document.querySelector("#capture-state");
+      if (captureStateElement.textContent !== captureState) captureStateElement.textContent = captureState;
+      document.querySelector("#capture-summary").classList.toggle("is-online", captureActive);
+      const toggle = document.querySelector("#capture-toggle");
+      toggle.setAttribute("aria-checked", String(captureActive));
+      toggle.setAttribute("aria-label", `${captureActive ? "关闭" : "开启"}本机音频采集`);
+      updateSettingsLock();
+    }
+
+    function renderAll() {
+      renderTransport("lan");
+      renderTransport("bluetooth");
+      updateOverview();
+    }
+
+    document.querySelector("#capture-toggle").addEventListener("click", () => {
+      if (hostPost("capture-toggle", { enabled: !state.captureEnabled })) return;
+      state.captureEnabled = !state.captureEnabled;
+      renderAll();
+    });
+
+    document.querySelector("#open-settings").addEventListener("click", () => {
+      if (document.querySelector("#settings-view").hidden) openSettings();
+      else closeSettings();
+    });
+
+    document.querySelector("#settings-home").addEventListener("click", closeSettings);
+    document.querySelector("#settings-overview-back").addEventListener("click", () => showSettingsOverview("back"));
+
+    document.querySelectorAll("[data-settings-category]").forEach((category) => {
+      category.addEventListener("click", () => showSettingsDetail(category.dataset.settingsCategory));
+    });
+
+    document.querySelectorAll("[data-theme-choice]").forEach((choice) => {
+      choice.addEventListener("click", () => {
+        preferences.theme = choice.dataset.themeChoice;
+        if (hostPost("setting", { key: "theme", value: preferences.theme })) return;
+        applyTheme();
+        setPressed("[data-theme-choice]", preferences.theme);
+      });
+    });
+
+    document.querySelector("#preconnect-toggle").addEventListener("click", () => {
+      preferences.preconnectControls = !preferences.preconnectControls;
+      if (hostPost("setting", { key: "preconnectControls", value: preferences.preconnectControls })) return;
+      document.querySelector("#preconnect-toggle").setAttribute("aria-checked", String(preferences.preconnectControls));
+      renderAll();
+    });
+
+    document.querySelector("#show-ip-toggle").addEventListener("click", () => {
+      preferences.showIp = !preferences.showIp;
+      if (hostPost("setting", { key: "showIp", value: preferences.showIp })) return;
+      document.querySelector("#show-ip-toggle").setAttribute("aria-checked", String(preferences.showIp));
+      renderAll();
+    });
+
+    document.querySelector("#startup-toggle").addEventListener("click", () => {
+      preferences.launchOnStartup = !preferences.launchOnStartup;
+      if (hostPost("setting", { key: "launchOnStartup", value: preferences.launchOnStartup })) return;
+      syncSettingsControls();
+    });
+
+    document.querySelector("#restore-connection-toggle").addEventListener("click", () => {
+      preferences.restoreConnectionState = !preferences.restoreConnectionState;
+      hostPost("setting", { key: "restoreConnectionState", value: preferences.restoreConnectionState });
+      syncSettingsControls();
+    });
+
+    document.querySelector("#auto-connect-toggle").addEventListener("click", () => {
+      preferences.autoConnect = !preferences.autoConnect;
+      hostPost("setting", { key: "autoConnect", value: preferences.autoConnect });
+      syncSettingsControls();
+    });
+
+    const exitBehaviorDropdown = document.querySelector("#exit-behavior-dropdown");
+    const exitBehaviorButton = document.querySelector("#exit-behavior");
+    const exitBehaviorOptions = [...exitBehaviorDropdown.querySelectorAll('[role="option"]')];
+    exitBehaviorButton.addEventListener("click", () => {
+      setExitBehaviorMenuOpen(!exitBehaviorDropdown.classList.contains("is-open"), true);
+    });
+    exitBehaviorButton.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && exitBehaviorDropdown.classList.contains("is-open")) {
+        event.preventDefault();
+        setExitBehaviorMenuOpen(false, true);
+      } else if (["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)
+        && !exitBehaviorDropdown.classList.contains("is-open")) {
+        event.preventDefault();
+        setExitBehaviorMenuOpen(true, true);
+      }
+    });
+    exitBehaviorOptions.forEach((option) => {
+      option.addEventListener("click", () => chooseExitBehavior(option.dataset.exitBehavior));
+    });
+    exitBehaviorDropdown.querySelector(".setting-menu").addEventListener("keydown", (event) => {
+      const currentIndex = exitBehaviorOptions.indexOf(document.activeElement);
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        const nextIndex = (currentIndex + direction + exitBehaviorOptions.length) % exitBehaviorOptions.length;
+        exitBehaviorOptions[nextIndex].focus();
+      } else if (event.key === "Home" || event.key === "End") {
+        event.preventDefault();
+        exitBehaviorOptions[event.key === "Home" ? 0 : exitBehaviorOptions.length - 1].focus();
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        setExitBehaviorMenuOpen(false, true);
+      } else if (event.key === "Tab") {
+        setExitBehaviorMenuOpen(false);
+      }
+    });
+    document.addEventListener("pointerdown", (event) => {
+      if (!exitBehaviorDropdown.contains(event.target)) setExitBehaviorMenuOpen(false);
+    });
+
+    function setupAutoConnectDropdown(dropdownId, buttonId, optionSelector, valueKey, settingKey) {
+      const dropdown = document.querySelector(`#${dropdownId}`);
+      const button = document.querySelector(`#${buttonId}`);
+      const options = [...dropdown.querySelectorAll(optionSelector)];
+      const setOpen = (open) => {
+        dropdown.classList.toggle("is-open", open);
+        button.setAttribute("aria-expanded", String(open));
+      };
+      button.addEventListener("click", () => setOpen(!dropdown.classList.contains("is-open")));
+      options.forEach((option) => option.addEventListener("click", () => {
+        const value = Number(option.dataset[valueKey]);
+        preferences[settingKey] = value;
+        hostPost("setting", { key: settingKey, value });
+        syncAutoConnectControls();
+        setOpen(false);
+      }));
+      document.addEventListener("pointerdown", (event) => {
+        if (!dropdown.contains(event.target)) setOpen(false);
+      });
+    }
+
+    setupAutoConnectDropdown("auto-connect-attempts-dropdown", "auto-connect-attempts", "[data-auto-connect-attempts]", "autoConnectAttempts", "autoConnectAttempts");
+    setupAutoConnectDropdown("auto-connect-interval-dropdown", "auto-connect-interval", "[data-auto-connect-interval]", "autoConnectInterval", "autoConnectIntervalSeconds");
+
+    document.querySelectorAll("[data-lan-mode]").forEach((choice) => {
+      choice.addEventListener("click", () => {
+        if (hasActiveSession()) return showSettingsLock();
+        preferences.lanMode = choice.dataset.lanMode;
+        if (hostPost("setting", { key: "lanMode", value: preferences.lanMode })) return;
+        setPressed("[data-lan-mode]", preferences.lanMode);
+        updateQualityRatePanels();
+      });
+    });
+
+    document.querySelectorAll("[data-compressed-rate]").forEach((choice) => {
+      choice.addEventListener("click", () => {
+        if (hasActiveSession()) return showSettingsLock();
+        preferences.compressedRate = Number(choice.dataset.compressedRate);
+        if (hostPost("setting", { key: "compressedRate", value: preferences.compressedRate })) return;
+        setPressed("[data-compressed-rate]", preferences.compressedRate);
+      });
+    });
+
+    document.querySelectorAll("[data-raw-rate]").forEach((choice) => {
+      choice.addEventListener("click", () => {
+        if (hasActiveSession()) return showSettingsLock();
+        preferences.rawRate = Number(choice.dataset.rawRate);
+        if (hostPost("setting", { key: "rawRate", value: preferences.rawRate })) return;
+        setPressed("[data-raw-rate]", preferences.rawRate);
+      });
+    });
+
+    document.querySelectorAll("[data-bluetooth-protocol]").forEach((choice) => {
+      choice.addEventListener("click", () => {
+        if (hasActiveSession()) return showSettingsLock();
+        preferences.bluetoothProtocol = choice.dataset.bluetoothProtocol;
+        if (hostPost("setting", { key: "bluetoothProtocol", value: preferences.bluetoothProtocol })) return;
+        setPressed("[data-bluetooth-protocol]", preferences.bluetoothProtocol);
+      });
+    });
+
+    document.querySelectorAll("[data-buffer-choice]").forEach((choice) => {
+      choice.addEventListener("click", () => {
+        if (hasActiveSession()) return showSettingsLock();
+        if (choice.dataset.bufferChoice === "custom") preferences.buffer = "custom";
+        else preferences.buffer = Number(choice.dataset.bufferChoice);
+        if (hostPost("setting", { key: "buffer", value: preferences.buffer })) return;
+        updateBufferChoices();
+      });
+    });
+
+    document.querySelector("[data-buffer-custom]").addEventListener("click", (event) => {
+      if (event.target.closest("#custom-buffer-input") || event.target.closest("#buffer-error")) return;
+      if (hasActiveSession()) return showSettingsLock();
+      preferences.buffer = "custom";
+      if (hostPost("setting", { key: "buffer", value: "custom" })) return;
+      updateBufferChoices();
+    });
+
+    document.querySelector("#custom-buffer-input").addEventListener("input", (event) => {
+      const input = event.currentTarget;
+      if (hasActiveSession()) {
+        input.value = preferences.customBuffer;
+        showSettingsLock();
+        return;
+      }
+      const value = Number(input.value);
+      const valid = Number.isInteger(value) && value >= 20 && value <= 240;
+      input.setAttribute("aria-invalid", String(!valid));
+      document.querySelector("#buffer-error").hidden = valid;
+      if (!valid) return;
+      preferences.customBuffer = value;
+      if (hostPost("setting", { key: "customBuffer", value })) return;
+      if (preferences.buffer === "custom") updateBufferChoices();
+    });
+
+    document.querySelectorAll("[data-transport-toggle]").forEach((toggle) => {
+      toggle.addEventListener("click", () => {
+        const transport = toggle.dataset.transportToggle;
+        const transportState = state.transports[transport];
+        const enabled = !transportState.enabled;
+        if (hostPost("transport-toggle", { transport, enabled })) return;
+        transportState.enabled = enabled;
+        if (!enabled) {
+          for (const device of transportState.devices) {
+            device.connected = false;
+            device.connecting = false;
+            device.connectedAt = null;
+          }
+        }
+        renderAll();
+      });
+    });
+
+    document.querySelectorAll("[data-refresh]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const transport = button.dataset.refresh;
+        const transportState = state.transports[transport];
+        if (!transportState.enabled || button.disabled) return;
+        if (hostMode) {
+          button.disabled = true;
+          button.classList.add("is-refreshing");
+          hostPost("refresh", { transport });
+          window.setTimeout(() => {
+            button.disabled = false;
+            button.classList.remove("is-refreshing");
+          }, 950);
+          return;
+        }
+        button.disabled = true;
+        button.classList.add("is-refreshing");
+        const scanStatus = document.querySelector(`[data-scan-status="${transport}"]`);
+        scanStatus.textContent = transport === "lan" ? "正在搜索局域网设备…" : "正在刷新已配对设备…";
+        window.setTimeout(() => {
+          transportState.scanCount += 1;
+          button.disabled = false;
+          button.classList.remove("is-refreshing");
+          renderTransport(transport);
+        }, 950);
+      });
+    });
+
+    document.addEventListener("click", (event) => {
+      const actionButton = event.target.closest("[data-device-action]");
+      if (actionButton) {
+        const { deviceId, transport, deviceAction } = actionButton.dataset;
+        const device = state.transports[transport].devices.find((entry) => entry.id === deviceId);
+        if (!device) return;
+        if (hostPost("device-action", { deviceId, transport, deviceAction })) return;
+        if (deviceAction === "connect") {
+          if (!state.transports[transport].enabled || device.connecting || device.connected) return;
+          device.connecting = true;
+          renderTransport(transport);
+          updateSettingsLock();
+          window.setTimeout(() => {
+            if (!state.transports[transport].enabled || !device.connecting) return;
+            device.connecting = false;
+            device.connected = true;
+            device.connectedAt = Date.now();
+            renderAll();
+          }, 1100);
+        } else if (deviceAction === "disconnect") {
+          device.connected = false;
+          device.connectedAt = null;
+          renderAll();
+        }
+        return;
+      }
+
+      const deviceSwitch = event.target.closest("[data-device-switch]");
+      if (deviceSwitch) {
+        const { deviceId, transport, deviceSwitch: control } = deviceSwitch.dataset;
+        const device = state.transports[transport].devices.find((entry) => entry.id === deviceId);
+        if (!device || (!device.connected && !preferences.preconnectControls)) return;
+        const field = control === "send" ? "sendEnabled" : "receiveEnabled";
+        device[field] = !device[field];
+        rememberDeviceSettings(device);
+        if (hostPost("device-switch", { deviceId, transport, control, enabled: device[field] })) return;
+        renderAll();
+      }
+    });
+
+    document.addEventListener("input", (event) => {
+      const slider = event.target.closest("[data-device-volume]");
+      if (!slider) return;
+      const { deviceId, transport, deviceVolume: direction } = slider.dataset;
+      const device = state.transports[transport].devices.find((entry) => entry.id === deviceId);
+      if (!device) return;
+      const field = direction === "send" ? "sendVolume" : "receiveVolume";
+      device[field] = Number(slider.value);
+      rememberDeviceSettings(device);
+      if (hostPost("device-volume", { deviceId, transport, direction, volume: device[field] })) return;
+      const value = document.querySelector(`[data-volume-value="${direction}:${CSS.escape(deviceId)}"]`);
+      if (value) value.textContent = `${device[field]}%`;
+    });
+
+    window.setInterval(() => {
+      for (const device of Object.values(state.transports).flatMap((transport) => transport.devices)) {
+        if (!device.connected || !device.connectedAt) continue;
+        const timer = document.querySelector(`[data-duration-for="${CSS.escape(device.id)}"]`);
+        if (timer) timer.textContent = `在线 ${formatDuration(Date.now() - device.connectedAt)}`;
+      }
+    }, 1000);
+
+    initializeSettings();
+    renderAll();
+  </script>
+</body>
+</html>

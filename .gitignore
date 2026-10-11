@@ -1,0 +1,38 @@
+# Rust build output
+/target/
+/target-*/
+
+# Android and local toolchains
+/.tools/
+/.adb-home/
+/.android/
+/.android-user/
+/.gradle-tmp/
+/.gradle-user/
+/.gradle-user-home/
+/android/.gradle/
+/android/app/build/
+/android/local.properties
+
+# Local delivery files and WebView2 profiles
+/Self-disk/
+*.WebView2/
+
+# Obsolete installer payloads
+/.installer-payload/
+/installer-payload/
+/installer-app/target/
+
+# Local screenshots and editor files
+/desktop-check.png
+/ui-verify-*.png
+.idea/
+.vscode/
+*.iml
+*.user
+*.suo
+
+# Operating-system files and logs
+Thumbs.db
+.DS_Store
+*.log
