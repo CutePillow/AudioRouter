@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.ColorStateList;
@@ -16,6 +17,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
 import android.media.projection.MediaProjectionManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -382,7 +384,7 @@ public final class MainActivity extends Activity {
     }
 
     private String themeMode() {
-        String mode = settings().getString(PREF_THEME_MODE, THEME_DARK);
+        String mode = settings().getString(PREF_THEME_MODE, THEME_SYSTEM);
         if (!THEME_LIGHT.equals(mode) && !THEME_DARK.equals(mode)) return THEME_SYSTEM;
         return mode;
     }
@@ -538,63 +540,139 @@ public final class MainActivity extends Activity {
         LinearLayout root = column();
         ScrollView scroll = createSettingsScrollView(root);
         addSettingsTopBar(root, "关于", this::showSettingsOverview);
-        LinearLayout card = column();
-        card.setPadding(dp(16), dp(16), dp(16), dp(16));
-        card.setBackground(rounded(COLOR_SURFACE, COLOR_LINE, 14));
-        LinearLayout.LayoutParams cardParams = matchWrap();
-        cardParams.topMargin = dp(18);
-        root.addView(card, cardParams);
 
-        LinearLayout heading = row();
-        heading.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout identity = column();
+        identity.setGravity(Gravity.CENTER_HORIZONTAL);
+        LinearLayout.LayoutParams identityParams = matchWrap();
+        identityParams.topMargin = dp(26);
+        identityParams.bottomMargin = dp(28);
+        root.addView(identity, identityParams);
+
         ImageView appIcon = new ImageView(this);
         appIcon.setImageResource(R.mipmap.ic_launcher);
         appIcon.setContentDescription("AudioRouter 应用图标");
-        heading.addView(appIcon, new LinearLayout.LayoutParams(dp(64), dp(64)));
-        LinearLayout labels = column();
+        appIcon.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        LinearLayout.LayoutParams iconParams = new LinearLayout.LayoutParams(dp(96), dp(96));
+        iconParams.gravity = Gravity.CENTER_HORIZONTAL;
+        identity.addView(appIcon, iconParams);
+
         TextView name = text("AudioRouter", 22, COLOR_TEXT);
         name.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        labels.addView(name, matchWrap());
+        name.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams nameParams = wrapWrap();
+        nameParams.topMargin = dp(10);
+        identity.addView(name, nameParams);
+
         String version;
         try {
             version = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
         } catch (PackageManager.NameNotFoundException error) {
-            version = "版本未知";
+            version = "1.0.0";
         }
-        labels.addView(text(version + " · Android", 12, COLOR_MUTED), matchWrap());
-        LinearLayout.LayoutParams labelParams = new LinearLayout.LayoutParams(0,
-                ViewGroup.LayoutParams.WRAP_CONTENT, 1);
-        labelParams.leftMargin = dp(16);
-        heading.addView(labels, labelParams);
-        card.addView(heading, matchWrap());
-        TextView description = text("在 Windows 电脑与 Android 手机之间双向传输实时音频。",
+        TextView versionText = text("V" + version, 12, COLOR_MUTED);
+        versionText.setGravity(Gravity.CENTER);
+        identity.addView(versionText, wrapWrap());
+
+        TextView author = text("By CutePillow", 12, COLOR_MUTED);
+        author.setGravity(Gravity.CENTER);
+        identity.addView(author, wrapWrap());
+
+        LinearLayout metadata = column();
+        root.addView(metadata, matchWrap());
+        addAboutLine(metadata);
+        String appDataDirectory = getApplicationInfo().dataDir;
+        addAboutMetadataRow(metadata, "数据存储位置",
+                "应用数据目录：" + appDataDirectory + "\n设置文件："
+                        + appDataDirectory + "/shared_prefs/" + PREFS_NAME + ".xml", null);
+        addAboutMetadataRow(metadata, "项目地址", "github.com/CutePillow/AudioRouter",
+                "https://github.com/CutePillow/AudioRouter");
+
+        LinearLayout information = column();
+        LinearLayout.LayoutParams informationParams = matchWrap();
+        informationParams.topMargin = dp(12);
+        root.addView(information, informationParams);
+
+        LinearLayout licenseRow = row();
+        licenseRow.setGravity(Gravity.CENTER_VERTICAL);
+        licenseRow.setPadding(dp(3), dp(12), dp(3), dp(12));
+        TextView licenseTitle = text("项目许可证", 14, COLOR_TEXT);
+        licenseTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        licenseRow.addView(licenseTitle, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1));
+        ImageView licenseChevron = icon(R.drawable.ic_chevron_right, COLOR_TEXT);
+        licenseRow.addView(licenseChevron, new LinearLayout.LayoutParams(dp(20), dp(20)));
+        information.addView(licenseRow, matchWrap());
+
+        ExpandableTransportBody licenseDetail = new ExpandableTransportBody(this);
+        TextView licenseText = text(
+                "GNU General Public License v3.0（GPL-3.0-only）。第三方组件遵循各自的许可证。",
                 12, COLOR_MUTED);
-        LinearLayout.LayoutParams descriptionParams = matchWrap();
-        descriptionParams.topMargin = dp(18);
-        card.addView(description, descriptionParams);
-        addAboutSection(card, "音频与连接",
-                "支持局域网 TCP、Bluetooth Classic RFCOMM、PCM 未压缩传输与 Opus 压缩传输。支持双声道、设备独立音量与可调音频缓冲。");
-        addAboutSection(card, "数据存储",
-                "设置和设备偏好保存在应用私有目录中，普通文件管理器无法直接访问。卸载应用通常会删除这些数据。\n"
-                        + getApplicationInfo().dataDir + "/shared_prefs/" + PREFS_NAME + ".xml");
-        addAboutSection(card, "第三方组件与致谢",
-                "Android：Android SDK、Concentus。Windows：Rust、Tao、Wry / WebView2、Opus。感谢相关开源项目与贡献者。");
-        addAboutSection(card, "项目许可证",
-                "尚未确定，发布时将补充项目许可证。第三方组件遵循各自的许可证。");
+        licenseText.setLineSpacing(dp(3), 1f);
+        licenseText.setPadding(dp(28), dp(3), 0, dp(14));
+        licenseText.setHorizontallyScrolling(false);
+        licenseDetail.addView(licenseText, matchWrap());
+        information.addView(licenseDetail, matchWrap());
+        licenseDetail.setExpanded(false);
+        licenseRow.setContentDescription("项目许可证，展开或收起许可证说明");
+        licenseRow.setOnClickListener(view -> {
+            boolean expanded = licenseDetail.getVisibility() != View.VISIBLE;
+            licenseDetail.setExpanded(expanded);
+            if (ValueAnimator.areAnimatorsEnabled()) {
+                licenseChevron.animate().rotation(expanded ? 90f : 0f).setDuration(220).start();
+            } else {
+                licenseChevron.setRotation(expanded ? 90f : 0f);
+            }
+        });
+
+        TextView credits = text("第三方组件与致谢\nAndroid：Android SDK、Concentus\n"
+                + "Windows：Rust、Tao、Wry / WebView2、Opus\n感谢相关开源项目与贡献者。",
+                10, COLOR_MUTED);
+        credits.setGravity(Gravity.CENTER);
+        credits.setLineSpacing(dp(4), 1f);
+        LinearLayout.LayoutParams creditsParams = matchWrap();
+        creditsParams.topMargin = dp(54);
+        creditsParams.leftMargin = dp(8);
+        creditsParams.rightMargin = dp(8);
+        root.addView(credits, creditsParams);
         return scroll;
     }
 
-    private void addAboutSection(LinearLayout card, String title, String detail) {
-        addDivider(card, dp(16), dp(12));
+    private void addAboutMetadataRow(LinearLayout parent, String title, String value, String url) {
+        LinearLayout row = column();
+        row.setPadding(dp(3), dp(10), dp(3), dp(10));
         TextView heading = text(title, 14, COLOR_TEXT);
         heading.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-        card.addView(heading, matchWrap());
-        TextView body = text(detail, 12, COLOR_MUTED);
-        body.setLineSpacing(dp(3), 1f);
-        body.setTextIsSelectable(true);
-        LinearLayout.LayoutParams bodyParams = matchWrap();
-        bodyParams.topMargin = dp(6);
-        card.addView(body, bodyParams);
+        row.addView(heading, matchWrap());
+        TextView detail = text(value, 11, url == null ? COLOR_MUTED : COLOR_MINT);
+        detail.setLineSpacing(dp(3), 1f);
+        detail.setHorizontallyScrolling(false);
+        detail.setTextIsSelectable(url == null);
+        if (url != null) {
+            detail.setFocusable(true);
+            detail.setContentDescription("在默认浏览器中打开项目地址");
+            detail.setOnClickListener(view -> openExternalUrl(url));
+        }
+        LinearLayout.LayoutParams detailParams = matchWrap();
+        detailParams.topMargin = dp(4);
+        row.addView(detail, detailParams);
+        parent.addView(row, matchWrap());
+        addAboutLine(parent);
+    }
+
+    private void addAboutLine(LinearLayout parent) {
+        View line = new View(this);
+        line.setBackgroundColor(COLOR_LINE);
+        parent.addView(line, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(1)));
+    }
+
+    private void openExternalUrl(String url) {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+        try {
+            startActivity(intent);
+        } catch (ActivityNotFoundException error) {
+            Toast.makeText(this, "未找到可打开链接的浏览器", Toast.LENGTH_LONG).show();
+        }
     }
 
     private ScrollView createSettingsScrollView(LinearLayout root) {
@@ -772,7 +850,7 @@ public final class MainActivity extends Activity {
                 PREF_SHOW_IP_ADDRESS, false);
         addPersonalizationSetting(root, "应用上次关闭时的连接状态",
                 "下次启动时恢复上次关闭前已开启的局域网和蓝牙连接。",
-                PREF_RESTORE_CONNECTION_STATE, false);
+                PREF_RESTORE_CONNECTION_STATE, true);
         addAutoConnectSetting(root);
         return scroll;
     }
@@ -801,7 +879,7 @@ public final class MainActivity extends Activity {
         styleSwitch(enabled);
         enabled.setShowText(false);
         enabled.setContentDescription("自动尝试连接");
-        enabled.setChecked(settings().getBoolean(PREF_AUTO_CONNECT, false));
+        enabled.setChecked(settings().getBoolean(PREF_AUTO_CONNECT, true));
         header.addView(enabled, wrapWrap());
         card.addView(header, matchWrap());
 
@@ -837,9 +915,9 @@ public final class MainActivity extends Activity {
         card.addView(options, matchWrap());
 
         Runnable sync = () -> {
-            boolean checked = settings().getBoolean(PREF_AUTO_CONNECT, false);
-            int attemptValue = settings().getInt(PREF_AUTO_CONNECT_ATTEMPTS, 3);
-            int intervalValue = settings().getInt(PREF_AUTO_CONNECT_INTERVAL_SECONDS, 3);
+            boolean checked = settings().getBoolean(PREF_AUTO_CONNECT, true);
+            int attemptValue = settings().getInt(PREF_AUTO_CONNECT_ATTEMPTS, 5);
+            int intervalValue = settings().getInt(PREF_AUTO_CONNECT_INTERVAL_SECONDS, 5);
             attempts.setText("自动连接尝试次数");
             interval.setText("自动连接尝试间隔");
             attemptsButton.setText(attemptValue == 0 ? "持续尝试" : attemptValue + " 次");
@@ -861,7 +939,7 @@ public final class MainActivity extends Activity {
         attemptsButton.setOnClickListener(view -> {
             int[] values = {1, 2, 3, 4, 5, 0};
             String[] labels = {"1 次", "2 次", "3 次", "4 次", "5 次", "持续尝试"};
-            int selected = settings().getInt(PREF_AUTO_CONNECT_ATTEMPTS, 3);
+            int selected = settings().getInt(PREF_AUTO_CONNECT_ATTEMPTS, 5);
             showSettingsChoicePopup(attemptsButton, labels, indexOf(values, selected), index -> {
                 settings().edit().putInt(PREF_AUTO_CONNECT_ATTEMPTS, values[index]).apply();
                 sync.run();
@@ -870,7 +948,7 @@ public final class MainActivity extends Activity {
         intervalButton.setOnClickListener(view -> {
             int[] values = {1, 2, 3, 5, 10, 30};
             String[] labels = {"1 秒", "2 秒", "3 秒", "5 秒", "10 秒", "30 秒"};
-            int selected = settings().getInt(PREF_AUTO_CONNECT_INTERVAL_SECONDS, 3);
+            int selected = settings().getInt(PREF_AUTO_CONNECT_INTERVAL_SECONDS, 5);
             showSettingsChoicePopup(intervalButton, labels, indexOf(values, selected), index -> {
                 settings().edit().putInt(PREF_AUTO_CONNECT_INTERVAL_SECONDS, values[index]).apply();
                 sync.run();
@@ -1268,7 +1346,7 @@ public final class MainActivity extends Activity {
 
     private String lanCodecMode() {
         return AudioQuality.LAN_UNCOMPRESSED.equals(settings().getString(
-                AudioRouterService.PREF_LAN_CODEC_MODE, AudioQuality.LAN_COMPRESSED))
+                AudioRouterService.PREF_LAN_CODEC_MODE, AudioQuality.LAN_UNCOMPRESSED))
                 ? AudioQuality.LAN_UNCOMPRESSED : AudioQuality.LAN_COMPRESSED;
     }
 

@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1413">
+  <title>AudioRouter · Android 关于页预览</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --canvas: #0d1413;
+      --surface: #16221f;
+      --surface-raised: #1f302c;
+      --line: #385049;
+      --text: #edf5f0;
+      --muted: #9db5ac;
+      --mint: #8fddc3;
+      --shadow: rgba(0, 0, 0, .32);
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: #090d0c; }
+    body {
+      min-width: 320px;
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background: radial-gradient(ellipse at 50% -12%, rgba(143, 221, 195, .12), transparent 36rem), #090d0c;
+      font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+      letter-spacing: 0;
+      scrollbar-color: var(--line) var(--canvas);
+    }
+
+    button, a { font: inherit; }
+    button:focus-visible, a:focus-visible { outline: 2px solid var(--mint); outline-offset: 3px; }
+    ::selection { color: var(--canvas); background: var(--mint); }
+
+    .preview-stage { display: grid; min-height: 100vh; place-items: center; padding: 28px 18px; }
+    .phone-screen {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      width: min(100%, 420px);
+      min-height: min(860px, calc(100vh - 56px));
+      overflow: hidden;
+      border: 1px solid rgba(157, 181, 172, .19);
+      border-radius: 26px;
+      background: var(--canvas);
+      box-shadow: 0 28px 90px var(--shadow), 0 4px 20px rgba(0, 0, 0, .18);
+    }
+
+    .app-bar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-height: 68px;
+      padding: max(12px, env(safe-area-inset-top)) 20px 10px;
+    }
+
+    .back-button {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      place-items: center;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      color: var(--text);
+      background: var(--surface);
+      cursor: pointer;
+      transition: border-color .18s ease, color .18s ease, background .18s ease;
+    }
+    .back-button:hover { border-color: var(--mint); color: var(--mint); background: var(--surface-raised); }
+    .back-button svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .app-bar h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: .01em; }
+
+    .content-scroll { flex: 1; overflow-y: auto; padding: 39px 22px max(20px, env(safe-area-inset-bottom)); }
+    .identity { display: grid; justify-items: center; gap: 9px; margin: 1px 0 28px; text-align: center; }
+    .app-icon { width: 96px; height: 96px; border: 1px solid rgba(143, 221, 195, .23); border-radius: 24px; background: var(--surface); box-shadow: 0 12px 28px rgba(0, 0, 0, .24); }
+    .app-name { margin-top: 4px; font-size: 22px; font-weight: 700; line-height: 1.25; letter-spacing: .01em; }
+    .app-version { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .app-author { color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+    .about-metadata { border-top: 1px solid var(--line); }
+    .about-metadata-row { display: grid; align-content: center; gap: 4px; min-height: 57px; padding: 10px 3px; border-bottom: 1px solid var(--line); }
+    .about-metadata-row strong { color: var(--text); font-size: 14px; font-weight: 600; line-height: 1.4; }
+    .about-metadata-row span { color: var(--muted); font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+    .about-metadata-row .storage-path { min-width: 0; white-space: normal; word-break: break-all; }
+    .about-metadata-row a { color: var(--mint); text-decoration-thickness: 1px; text-underline-offset: 3px; overflow-wrap: anywhere; }
+    .information-list { border-top: 0; }
+    .information-row {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      width: 100%;
+      min-height: 57px;
+      padding: 12px 3px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      color: var(--text);
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+      transition: color .18s ease, background .18s ease;
+    }
+    .information-row:hover, .information-row[aria-expanded="true"] { color: var(--mint); background: rgba(143, 221, 195, .045); }
+    .information-row strong { flex: 1; font-size: 14px; font-weight: 600; }
+    .information-row svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s ease; }
+    .information-row[aria-expanded="true"] svg { transform: rotate(90deg); }
+
+    .information-detail {
+      max-height: 0;
+      overflow: hidden;
+      margin: 0;
+      padding: 0 26px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.75;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: max-height .24s ease, padding .24s ease, opacity .18s ease, transform .24s ease;
+      overflow-wrap: anywhere;
+    }
+    .information-detail.is-open { max-height: 190px; padding-top: 4px; padding-bottom: 14px; opacity: 1; transform: translateY(0); }
+    .information-detail a { color: var(--mint); text-decoration-thickness: 1px; text-underline-offset: 3px; }
+
+    .credits {
+      margin: auto 6px 0;
+      padding: 54px 4px 6px;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.85;
+      text-align: center;
+    }
+
+    @media (max-width: 520px) {
+      html, body { background: var(--canvas); }
+      .preview-stage { display: block; min-height: 100svh; padding: 0; }
+      .phone-screen { width: 100%; min-height: 100svh; border: 0; border-radius: 0; box-shadow: none; }
+      .app-bar { min-height: 62px; padding-right: 18px; padding-left: 18px; }
+      .content-scroll { padding: 39px 20px max(18px, env(safe-area-inset-bottom)); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview-stage">
+    <section class="phone-screen" aria-label="AudioRouter 安卓端关于页面预览">
+      <header class="app-bar">
+        <button class="back-button" id="back-button" type="button" aria-label="返回设置" title="返回设置">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5-7 7 7 7"></path></svg>
+        </button>
+        <h1>关于</h1>
+      </header>
+
+      <div class="content-scroll">
+        <section class="identity" aria-label="应用信息">
+          <img class="app-icon" src="../icons/audiorouter-icon.png" alt="AudioRouter 应用图标">
+          <strong class="app-name">AudioRouter</strong>
+          <span class="app-version">V1.0.0</span>
+          <span class="app-author">By CutePillow</span>
+        </section>
+
+        <section class="about-metadata" aria-label="项目资料">
+          <div class="about-metadata-row"><strong>数据存储位置</strong><span class="storage-path">应用数据目录：/data/user/0/com.audiorouter.app<br>设置文件：/data/user/0/com.audiorouter.app/shared_prefs/audiorouter-settings.xml</span></div>
+          <div class="about-metadata-row"><strong>项目地址</strong><span><a href="https://github.com/CutePillow/AudioRouter" target="_blank" rel="noreferrer">github.com/CutePillow/AudioRouter</a></span></div>
+        </section>
+
+        <section class="information-list" aria-label="关于信息">
+          <button class="information-row" type="button" data-row="license" aria-expanded="false" aria-controls="detail-license"><strong>项目许可证</strong><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button>
+          <p class="information-detail" id="detail-license">GNU General Public License v3.0（GPL-3.0-only）。第三方组件遵循各自的许可证。</p>
+        </section>
+
+        <p class="credits">第三方组件与致谢<br>Android：Android SDK、Concentus<br>Windows：Rust、Tao、Wry / WebView2、Opus<br>感谢相关开源项目与贡献者。</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const rows = [...document.querySelectorAll("[data-row]")];
+    rows.forEach((row) => {
+      row.addEventListener("click", () => {
+        const wasOpen = row.getAttribute("aria-expanded") === "true";
+        rows.forEach((item) => {
+          item.setAttribute("aria-expanded", "false");
+          document.querySelector(item.getAttribute("aria-controls")).classList.remove("is-open");
+        });
+        row.setAttribute("aria-expanded", String(!wasOpen));
+        document.querySelector(row.getAttribute("aria-controls")).classList.toggle("is-open", !wasOpen);
+      });
+    });
+    document.querySelector("#back-button").addEventListener("click", () => {
+      if (history.length > 1) history.back();
+      else document.querySelector(".phone-screen").animate(
+        [{ transform: "translateX(0)" }, { transform: "translateX(5px)" }, { transform: "translateX(0)" }],
+        { duration: 220, easing: "ease-out" },
+      );
+    });
+  </script>
+</body>
+</html>

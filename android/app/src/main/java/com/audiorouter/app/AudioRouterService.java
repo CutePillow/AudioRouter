@@ -377,7 +377,7 @@ public final class AudioRouterService extends Service {
         audioBufferMs = clampAudioBuffer(preferences.getInt(
                 PREF_AUDIO_BUFFER_MS, DEFAULT_AUDIO_BUFFER_MS));
         String storedLanMode = preferences.getString(PREF_LAN_CODEC_MODE,
-                AudioQuality.LAN_COMPRESSED);
+                AudioQuality.LAN_UNCOMPRESSED);
         lanCodecMode = AudioQuality.LAN_UNCOMPRESSED.equals(storedLanMode)
                 ? AudioQuality.LAN_UNCOMPRESSED : AudioQuality.LAN_COMPRESSED;
         lanOpusBitrateKbps = clampOpusBitrate(preferences.getInt(
@@ -639,7 +639,7 @@ public final class AudioRouterService extends Service {
 
     private void restoreConfiguredState(boolean publishStatus) {
         configuredStateRestored = true;
-        boolean restore = settings().getBoolean(PREF_RESTORE_CONNECTION_STATE, false);
+        boolean restore = settings().getBoolean(PREF_RESTORE_CONNECTION_STATE, true);
         boolean lanEnabled = restore && isLanListeningEnabled();
         boolean bluetoothEnabled = restore && isBluetoothListeningEnabled();
         if (!restore) {
@@ -879,17 +879,17 @@ public final class AudioRouterService extends Service {
     }
 
     private boolean isAutoConnectEnabled() {
-        return settings().getBoolean(PREF_AUTO_CONNECT, false);
+        return settings().getBoolean(PREF_AUTO_CONNECT, true);
     }
 
     private int autoConnectAttempts() {
-        return Math.max(0, Math.min(5, settings().getInt(PREF_AUTO_CONNECT_ATTEMPTS, 3)));
+        return Math.max(0, Math.min(5, settings().getInt(PREF_AUTO_CONNECT_ATTEMPTS, 5)));
     }
 
     private int autoConnectIntervalSeconds() {
-        int value = settings().getInt(PREF_AUTO_CONNECT_INTERVAL_SECONDS, 3);
+        int value = settings().getInt(PREF_AUTO_CONNECT_INTERVAL_SECONDS, 5);
         return value == 1 || value == 2 || value == 3 || value == 5 || value == 10 || value == 30
-                ? value : 3;
+                ? value : 5;
     }
 
     private boolean hasBluetoothPermission() {

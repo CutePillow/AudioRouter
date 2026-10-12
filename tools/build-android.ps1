@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
 $root = Split-Path -Parent $PSScriptRoot
-$jdk = 'C:\Program Files\Microsoft\jdk-17.0.20.101-hotspot'
+$jdk = 'D:\Self\Self-Code\Self-Java\Self-Java17'
 $sdk = Join-Path $root '.tools\android-sdk'
 $androidUserHome = Join-Path $root '.tools\android-user-home'
 $gradleUserHome = Join-Path $root '.tools\gradle-user-home'
@@ -44,7 +44,7 @@ if (-not (Test-Path -LiteralPath $apk)) {
 }
 
 $outputDirectory = Join-Path $root 'Self-disk'
-$outputApk = Join-Path $outputDirectory 'AudioRouter-debug.apk'
+$outputApk = Join-Path $outputDirectory 'AudioRouter-android-debug-1.0.0.apk'
 New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
 Move-Item -LiteralPath $apk -Destination $outputApk -Force
 Get-Item -LiteralPath $outputApk | Select-Object FullName, Length, LastWriteTime

@@ -1,5 +1,7 @@
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+#[cfg(windows)]
+use std::{ffi::OsStr, os::windows::ffi::OsStrExt};
 
 use tao::dpi::LogicalSize;
 use tao::event::{Event, WindowEvent};
@@ -7,6 +9,8 @@ use tao::event_loop::{ControlFlow, EventLoop};
 #[cfg(windows)]
 use tao::platform::windows::WindowExtWindows;
 use tao::window::{Icon, WindowBuilder};
+#[cfg(windows)]
+use windows_sys::Win32::UI::Shell::ShellExecuteW;
 use wry::WebViewBuilder;
 
 use crate::settings::DesktopSettings;
@@ -14,6 +18,40 @@ use crate::AudioRouterApp;
 
 const RESIZE_SAVE_DELAY: Duration = Duration::from_millis(500);
 const APP_ICON_RGBA: &[u8] = include_bytes!("../../../assets/icons/audiorouter-icon-64.rgba");
+
+pub fn open_external_url(url: &str) {
+    if !matches!(
+        url.trim_end_matches('/'),
+        "https://github.com/CutePillow/AudioRouter"
+    ) {
+        return;
+    }
+    #[cfg(windows)]
+    {
+        let operation: Vec<u16> = OsStr::new("open")
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        let target: Vec<u16> = OsStr::new(url)
+            .encode_wide()
+            .chain(std::iter::once(0))
+            .collect();
+        unsafe {
+            ShellExecuteW(
+                std::ptr::null_mut(),
+                operation.as_ptr(),
+                target.as_ptr(),
+                std::ptr::null(),
+                std::ptr::null(),
+                1,
+            );
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = std::process::Command::new("xdg-open").arg(url).spawn();
+    }
+}
 
 fn save_window_size(state: &Arc<Mutex<AudioRouterApp>>, width: u32, height: u32) {
     if let Ok(mut app) = state.lock() {
@@ -48,7 +86,6 @@ pub fn run() -> wry::Result<()> {
     let app_info = serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),
         "dataDirectory": webview_data_directory.as_ref().map(|path| path.display().to_string()),
-        "iconSvg": include_str!("../../../assets/icons/audiorouter-mark.svg"),
     });
     let mut web_context = wry::WebContext::new(webview_data_directory);
     let webview = WebViewBuilder::with_web_context(&mut web_context)

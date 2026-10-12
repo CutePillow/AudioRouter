@@ -25,7 +25,7 @@ tools/build-android.ps1
 需要本机已有 Inno Setup 7：
 
 ```text
-tools/build-installer.ps1 -Version 1.1.0
+tools/build-installer.ps1 -Version 1.0.0
 ```
 
 安装器默认安装到 `C:\Program Files\AudioRouter`，也允许用户选择其他目录。程序配置、设备偏好、窗口大小和 WebView2 数据保存在安装目录的 `data` 子目录中。

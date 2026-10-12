@@ -6,9 +6,14 @@ $pcBinary = Join-Path $root 'target\debug\audiorouter-desktop.exe'
 $pcOutput = Join-Path $outputDirectory 'AudioRouter.exe'
 $uiSource = Join-Path $root 'assets\ui\pc-ui-mock.html'
 $uiCopy = Join-Path $outputDirectory 'pc-ui-mock.html'
+$iconSource = Join-Path $root 'assets\icons\audiorouter-icon.png'
+$iconDirectory = Join-Path $outputDirectory 'assets\icons'
+$iconCopy = Join-Path $iconDirectory 'audiorouter-icon.png'
 
 New-Item -ItemType Directory -Force -Path $outputDirectory | Out-Null
+New-Item -ItemType Directory -Force -Path $iconDirectory | Out-Null
 Copy-Item -LiteralPath $uiSource -Destination $uiCopy -Force
+Copy-Item -LiteralPath $iconSource -Destination $iconCopy -Force
 
 $env:Path = "$env:USERPROFILE\.cargo\bin;$env:Path"
 Push-Location $root

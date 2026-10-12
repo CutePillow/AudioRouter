@@ -454,6 +454,11 @@ impl AudioRouterApp {
                     _ => {}
                 }
             }
+            "open-external-url" => {
+                if let Some(url) = command.get("url").and_then(Value::as_str) {
+                    webview::open_external_url(url);
+                }
+            }
             "refresh" => match command.get("transport").and_then(Value::as_str) {
                 Some("lan") => self.refresh_transport(TransportKind::Lan),
                 Some("bluetooth") => self.refresh_transport(TransportKind::Bluetooth),

@@ -437,17 +437,28 @@
     .settings-card:has(.setting-dropdown.is-open) { z-index: 10; }
     .settings-card + .settings-card { margin-top: 16px; }
     .settings-card h2 { margin: 0 0 15px; font-size: 17px; }
-    .about-heading { display: grid; justify-items: center; gap: 11px; margin-bottom: 20px; text-align: center; }
-    .about-icon { width: 88px; height: 88px; flex: 0 0 auto; border-radius: 22px; }
-    .about-heading h2 { margin: 0 0 5px; font-size: 22px; }
-    .about-version, .about-description { color: var(--muted); font-size: 12px; line-height: 1.7; }
-    .about-description { margin: 0 0 20px; }
-    .about-details { margin: 0; }
-    .about-details > div { padding: 14px 0; border-top: 1px solid var(--line); }
-    .about-details dt { margin-bottom: 6px; font-size: 13px; font-weight: 700; }
-    .about-details dd { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
-    .about-path { display: block; margin-top: 6px; }
-    .about-credits { max-width: 760px; margin: 16px auto 0; color: var(--muted); font-size: 10px; line-height: 1.7; text-align: center; }
+    .about-mobile-page { width: min(100%, 520px); margin: 0 auto; padding: 8px 10px 20px; }
+    .about-mobile-hero { display: grid; justify-items: center; gap: 10px; margin: 18px 0 28px; text-align: center; }
+    .about-icon { width: 96px; height: 96px; flex: 0 0 auto; border: 1px solid var(--line); border-radius: 24px; background: var(--surface); box-shadow: 0 12px 28px var(--shadow); }
+    .about-mobile-name { margin-top: 3px; font-size: 22px; font-weight: 700; letter-spacing: .01em; }
+    .about-version { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .about-author { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .about-static-details { border-top: 1px solid var(--line); }
+    .about-static-row { display: grid; align-content: center; gap: 4px; min-height: 57px; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+    .about-static-row strong { color: var(--text); font-size: 14px; font-weight: 600; line-height: 1.4; }
+    .about-static-row span { min-width: 0; color: var(--muted); font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
+    .about-static-row a { color: var(--mint); text-decoration-thickness: 1px; text-underline-offset: 3px; overflow-wrap: anywhere; }
+    .about-static-row #about-storage, .about-path { white-space: pre-wrap; word-break: break-all; }
+    .about-info-list { border-top: 0; }
+    .about-info-row { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; padding: 12px 4px; border: 0; border-bottom: 1px solid var(--line); color: var(--text); background: transparent; text-align: left; cursor: pointer; transition: color .18s ease, background .18s ease; }
+    .about-info-row:hover, .about-info-row[aria-expanded="true"] { color: var(--mint); background: rgba(143, 221, 195, .05); }
+    .about-info-row strong { flex: 1; font-size: 14px; font-weight: 600; }
+    .about-info-row svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s ease; }
+    .about-info-row[aria-expanded="true"] svg { transform: rotate(90deg); }
+    .about-info-detail { max-height: 0; overflow: hidden; margin: 0; padding: 0 28px; color: var(--muted); font-size: 12px; line-height: 1.7; opacity: 0; transform: translateY(-5px); transition: max-height .24s ease, padding .24s ease, opacity .18s ease, transform .24s ease; overflow-wrap: anywhere; }
+    .about-info-detail.is-open { max-height: 180px; padding-top: 3px; padding-bottom: 14px; opacity: 1; transform: translateY(0); }
+    .about-path { display: block; margin-top: 6px; color: var(--text); overflow-wrap: anywhere; }
+    .about-mobile-credits { margin: 54px 8px 0; color: var(--muted); font-size: 10px; line-height: 1.8; text-align: center; }
     .theme-list, .quality-mode-list, .quality-protocol-list { display: grid; gap: 9px; }
     .theme-choice, .quality-mode-choice, .quality-protocol, .quality-option {
       display: flex; align-items: center; gap: 12px; min-height: 55px; width: 100%; padding: 12px 14px;
@@ -684,18 +695,18 @@
             </div><div class="buffer-custom" data-buffer-custom><button class="buffer-custom-select" type="button" data-buffer-choice="custom" aria-pressed="false"><span><strong>自定义缓冲</strong><small>输入 20–240 的正整数</small></span></button><div class="buffer-custom-row"><input id="custom-buffer-input" type="number" min="20" max="240" step="1" value="80" aria-label="自定义缓冲时间" aria-invalid="false"><em>ms</em></div><p class="buffer-error" id="buffer-error" hidden>请输入 20–240 的正整数。</p></div><p class="buffer-applied" id="buffer-applied">当前使用：60 ms</p></section>
           </section>
           <section class="settings-detail-panel" data-settings-detail="about" hidden>
-            <section class="settings-card">
-              <div class="about-heading"><img class="about-icon" id="about-icon" src="../icons/audiorouter-icon.png" alt="AudioRouter 应用图标"><div><h2>AudioRouter</h2><span class="about-version" id="about-version">V1.17</span></div></div>
-              <p class="about-description">在 Windows 电脑与 Android 手机之间双向传输实时音频。</p>
-              <dl class="about-details">
-                <div><dt>音频与连接</dt><dd>支持局域网 TCP、Bluetooth Classic RFCOMM、PCM 未压缩传输与 Opus 压缩传输。支持双声道、设备独立音量与可调音频缓冲。</dd></div>
-                <div><dt>数据存储</dt><dd id="about-storage">网页预览设置保存在浏览器本地存储中。Windows 程序的设置和 WebView2 数据保存在程序目录下的 data 文件夹。</dd></div>
-                <div><dt>作者信息</dt><dd>作者：CutePillow</dd></div>
-                <div><dt>项目地址</dt><dd>GitHub 仓库地址：待补充</dd></div>
-                <div><dt>项目许可证</dt><dd>尚未确定，发布时将补充项目许可证。第三方组件遵循各自的许可证。</dd></div>
-              </dl>
-            </section>
-            <p class="about-credits">第三方组件与致谢<br>Windows：Rust、Tao、Wry / WebView2、Opus<br>Android：Android SDK、Concentus<br>感谢相关开源项目与贡献者。</p>
+            <div class="about-mobile-page">
+              <div class="about-mobile-hero"><svg class="about-icon" id="about-icon" viewBox="0 0 512 512" role="img" aria-label="AudioRouter 应用图标"><defs><linearGradient id="about-surface" x1="64" y1="24" x2="448" y2="488" gradientUnits="userSpaceOnUse"><stop stop-color="#1D514A"></stop><stop offset="1" stop-color="#102B2A"></stop></linearGradient><linearGradient id="about-mint" x1="94" y1="151" x2="419" y2="361" gradientUnits="userSpaceOnUse"><stop stop-color="#B6F4D8"></stop><stop offset="1" stop-color="#61D6B2"></stop></linearGradient><linearGradient id="about-amber" x1="168" y1="191" x2="350" y2="324" gradientUnits="userSpaceOnUse"><stop stop-color="#FFD98A"></stop><stop offset="1" stop-color="#ECA63B"></stop></linearGradient></defs><rect x="20" y="20" width="472" height="472" rx="132" fill="url(#about-surface)"></rect><path d="M137 105C177 79 216 66 256 66s79 13 119 39" fill="none" stroke="#D4FFF0" stroke-opacity=".08" stroke-width="3"></path><path d="M375 407c-40 26-79 39-119 39s-79-13-119-39" fill="none" stroke="#D4FFF0" stroke-opacity=".08" stroke-width="3"></path><path d="M102 198C147 137 211 141 256 219c45 78 109 82 154 21" fill="none" stroke="url(#about-mint)" stroke-linecap="round" stroke-width="28"></path><path d="M410 314C365 375 301 371 256 293c-45-78-109-82-154-21" fill="none" stroke="url(#about-amber)" stroke-linecap="round" stroke-width="28"></path><circle cx="256" cy="256" r="57" fill="#173E39" stroke="#D8FFEC" stroke-opacity=".92" stroke-width="7"></circle><path d="M236 247v18M256 235v42M276 247v18" fill="none" stroke="#FFD98A" stroke-linecap="round" stroke-width="9"></path></svg><strong class="about-mobile-name">AudioRouter</strong><span class="about-version" id="about-version">V1.0.0</span><span class="about-author">By CutePillow</span></div>
+              <div class="about-static-details" aria-label="项目资料">
+                <div class="about-static-row"><strong>数据存储位置</strong><span id="about-storage">程序根目录\data</span></div>
+                <div class="about-static-row"><strong>项目地址</strong><span><a href="https://github.com/CutePillow/AudioRouter" target="_blank" rel="noreferrer" data-external-url="https://github.com/CutePillow/AudioRouter">github.com/CutePillow/AudioRouter</a></span></div>
+              </div>
+              <div class="about-info-list" aria-label="关于信息">
+                <button class="about-info-row" type="button" data-about-row="license" aria-expanded="false"><strong>项目许可证</strong><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"></path></svg></button>
+                <p class="about-info-detail" data-about-detail="license">GNU General Public License v3.0（GPL-3.0-only）。第三方组件遵循各自的许可证。</p>
+              </div>
+              <p class="about-mobile-credits">第三方组件与致谢<br>Windows：Rust、Tao、Wry / WebView2、Opus<br>Android：Android SDK、Concentus<br>感谢相关开源项目与贡献者。</p>
+            </div>
           </section>
         </div>
       </section>
@@ -796,6 +807,14 @@
       return true;
     }
 
+    document.querySelectorAll("[data-external-url]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        if (!hostMode) return;
+        event.preventDefault();
+        hostPost("open-external-url", { url: link.dataset.externalUrl });
+      });
+    });
+
     window.__audioRouterShowTransportError = (message) => {
       const dialog = document.querySelector("#transport-error-dialog");
       document.querySelector("#transport-error-message").textContent = message;
@@ -842,14 +861,12 @@
 
     const appInfo = window.__audioRouterAppInfo;
     if (appInfo) {
-      document.querySelector("#about-version").textContent = "V1.17";
-      document.querySelector("#about-icon").src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(appInfo.iconSvg)}`;
+      document.querySelector("#about-version").textContent = `V${appInfo.version || "1.0.0"}`;
       const storage = document.querySelector("#about-storage");
-      storage.textContent = "设置、设备偏好、窗口大小和 WebView2 数据保存在以下目录：";
-      const path = document.createElement("span");
-      path.className = "about-path";
-      path.textContent = appInfo.dataDirectory || "无法读取数据目录";
-      storage.append(path);
+      storage.textContent = appInfo.dataDirectory || "程序根目录\\data";
+    } else {
+      const storage = document.querySelector("#about-storage");
+      storage.textContent = "程序根目录\\data";
     }
 
     function hasActiveSession() {
@@ -949,6 +966,23 @@
       const systemTheme = window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
       document.documentElement.dataset.colorScheme = preferences.theme === "system" ? systemTheme : preferences.theme;
     }
+
+    function setAboutRowOpen(row, open) {
+      const key = row.dataset.aboutRow;
+      const detail = key === "storage"
+        ? document.querySelector("#about-storage")
+        : document.querySelector(`[data-about-detail="${key}"]`);
+      row.setAttribute("aria-expanded", String(open));
+      detail?.classList.toggle("is-open", open);
+    }
+
+    document.querySelectorAll("[data-about-row]").forEach((row) => {
+      row.addEventListener("click", () => {
+        const open = row.getAttribute("aria-expanded") !== "true";
+        document.querySelectorAll("[data-about-row]").forEach((other) => setAboutRowOpen(other, false));
+        setAboutRowOpen(row, open);
+      });
+    });
 
     function updateBufferChoices() {
       const customSelected = preferences.buffer === "custom";
